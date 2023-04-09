@@ -11,6 +11,7 @@
              (define size (caar l))
              (define name (cdar l))
              (define path (build-path prefix name))
+             (make-parent-directory* path)
              (with-handlers ((exn:fail:filesystem? (lambda (_) (delete-file path))))
                (call-with-output-file
                  path

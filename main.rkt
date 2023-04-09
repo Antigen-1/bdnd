@@ -91,8 +91,7 @@
   (define fl (parameterize ((current-directory (current-handling-directory)))
                (reverse
                 (for/fold ((r null)) ((p (in-directory)))
-                  (let ((rp (resolve-path p)))
-                    (if (file-exists? rp) (cons rp r) r))))))
+                  (if (file-exists? p) (cons p r) r))))) ;; The predicate file-exists? works on the final destination of a link or series of links.
 
   (define ofl (parameterize ((current-directory (current-handling-directory)))
                 (map (lambda (f) (cons (file-size f) (path->string f))) fl)))

@@ -7,3 +7,4 @@
 (define version "0.0")
 (define pkg-authors '(hin))
 (define license '(Apache-2.0 OR MIT))
+(define raco-commands (list "bdnd" '(submod bdnd main) "compress a directory to a single module" #f))
