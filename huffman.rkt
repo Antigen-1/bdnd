@@ -51,6 +51,9 @@
 (define (byte-set-union s1 s2)
   (configure-byte-set (set-union s1 s2)))
 
+(define (byte-set-have? b s)
+  (configure-byte-set (have-element? b s)))
+
 (define (merge-two-nodes n1 n2)
   (call-with-values (lambda () (if (> (node-frequency n1) (node-frequency n2)) (values n2 n1) (values n1 n2)))
                     (lambda (min max)
@@ -82,7 +85,7 @@
 (define (consult-huffman-tree b t (r null))
   (cond ((and (node-is-leaf? (left-node t)) (= b (node-content (left-node t)))) (reverse (cons 0 r)))
         ((and (node-is-leaf? (right-node t)) (= b (node-content (right-node t)))) (reverse (cons 1 r)))
-        ((have-element? b (node-content (left-node t))) (consult-huffman-tree b (left-node t) (cons 0 r)))
+        ((byte-set-have? b (node-content (left-node t))) (consult-huffman-tree b (left-node t) (cons 0 r)))
         (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
 
 (provide make-huffman-tree consult-huffman-tree)
