@@ -89,4 +89,5 @@
          (consult-huffman-tree b (left-node t) (cons 0 r)))
         (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
 
-(provide make-huffman-tree consult-huffman-tree)
+(provide make-huffman-tree consult-huffman-tree
+	 left-node right-node node-content node-is-leaf?)

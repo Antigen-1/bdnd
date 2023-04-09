@@ -29,6 +29,16 @@
 
 (define-runtime-path test-dir "test")
 
+(module reader racket/base
+  (define (read-syntax src port)
+    (list 'module (gensym 'bdnd) 'bdnd/expander
+          (read port)
+          (read port)
+          (read port)
+          port))
+
+  (provide read-syntax))
+
 (module+ test
   ;; Any code in this `test` submodule runs when this file is run using DrRacket
   ;; or with `raco test`. The code here does not run when this file is
