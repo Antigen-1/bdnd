@@ -25,14 +25,25 @@
 
 ;; Code here
 
+(require racket/runtime-path)
 
+(define-runtime-path test-dir "test")
 
 (module+ test
   ;; Any code in this `test` submodule runs when this file is run using DrRacket
   ;; or with `raco test`. The code here does not run when this file is
   ;; required by another module.
 
-  (check-equal? (+ 2 2) 4))
+  (require "huffman.rkt")
+  
+  (test-case
+      "huffman"
+    (define test-file (build-path test-dir "huffman"))
+    (define tree (make-huffman-tree test-file))
+    (check-equal? (consult-huffman-tree 97 tree) '(0))
+    (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
+    (check-equal? (consult-huffman-tree 99 tree) '(1 1))
+    (check-equal? (consult-huffman-tree 100 tree) '(1 0 0))))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
@@ -40,11 +51,4 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
 
-  (require racket/cmdline)
-  (define who (box "world"))
-  (command-line
-    #:program "my-program"
-    #:once-each
-    [("-n" "--name") name "Who to say hello to" (set-box! who name)]
-    #:args ()
-    (printf "hello ~a~n" (unbox who))))
+  )
