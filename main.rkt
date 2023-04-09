@@ -74,5 +74,36 @@
   ;; this file is run using DrRacket or the `racket` executable.  The code here
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
+  
+  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel)
+  
+  (define current-prefix (make-parameter "file"))
+  (define current-output-file (make-parameter "result.rkt"))
+  (define current-handling-directory (make-parameter #f))
 
-  )
+  (command-line #:program (short-program+command-name)
+                #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
+                #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
+                #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
+  
+  (define ht (make-huffman-tree (current-handling-directory)))
+
+  (define fl (parameterize ((current-directory (current-handling-directory)))
+               (reverse
+                (for/fold ((r null)) ((p (in-directory)))
+                  (let ((rp (resolve-path p)))
+                    (if (file-exists? rp) (cons rp r) r))))))
+
+  (define ofl (parameterize ((current-directory (current-handling-directory)))
+                (map (lambda (f) (cons (file-size f) (path->string f))) fl)))
+  
+  (call-with-output-file
+    (current-output-file)
+    (lambda (out)
+      (displayln "#lang bdnd" out)
+      (write ht out)
+      (write ofl out)
+      (write (current-prefix) out)
+      (define-values (ch thd) (compress-to-port out))
+      (map (lambda (f) (call-with-input-file f (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl)
+      (void (sync thd)))))

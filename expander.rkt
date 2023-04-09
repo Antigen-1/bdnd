@@ -25,6 +25,6 @@
                                                        (begin (write-byte (node-content next-tree) out) (if (= 1 s) (loop (cdr l) (cdr r)) (work (sub1 s) tree (cdr r))))
                                                        (work s next-tree (cdr r)))))))
                      (sync ch-evt
-                           (replace-evt (thread-dead-evt thd) (lambda (_) (cond ((sync/timeout 0 ch-evt)) ((not (null? r)) hn-evt)))) ;;exit
+                           (replace-evt thd (lambda (_) (cond ((sync/timeout 0 ch-evt)) ((not (null? r)) hn-evt)))) ;;exit
                            (if (null? r) never-evt hn-evt)))))))))))
                                
