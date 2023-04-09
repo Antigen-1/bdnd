@@ -52,7 +52,7 @@
   (configure-byte-set (set-union s1 s2)))
 
 (define (merge-two-nodes n1 n2)
-  (call-with-values (if (> (node-frequency n1) (node-frequency n2)) (values n2 n1) (values n1 n2))
+  (call-with-values (lambda () (if (> (node-frequency n1) (node-frequency n2)) (values n2 n1) (values n1 n2)))
                     (lambda (min max)
                       (make-node (+ (node-frequency min) (node-frequency max))
                                  (cond ((and (node-is-leaf? min) (node-is-leaf? max))
