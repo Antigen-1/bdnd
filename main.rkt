@@ -34,6 +34,17 @@
   ;; or with `raco test`. The code here does not run when this file is
   ;; required by another module.
 
+  (require racket/async-channel "codec.rkt")
+
+  (test-case
+      "codec"
+    (define-values (in out) (make-pipe))
+    (define ch1 (compress-to-port out))
+    (define ch2 (decompress-from-port in))
+    (define bit-list '(0 1 1 0 1 0 1 1))
+    (async-channel-put ch1 bit-list)
+    (check-equal? bit-list (sync ch2)))
+
   (require "huffman.rkt")
   
   (test-case
