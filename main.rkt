@@ -31,11 +31,13 @@
 
 (module reader racket/base
   (define (read-syntax src port)
-    (list 'module (gensym 'bdnd) 'bdnd/expander
-          (read port)
-          (read port)
-          (read port)
-          port))
+    (datum->syntax
+     #f
+     (list 'module (gensym 'bdnd) 'bdnd/expander
+           (read port)
+           (read port)
+           (read port)
+           port)))
 
   (provide read-syntax))
 
@@ -103,4 +105,5 @@
       (define-values (ch thd) (compress-to-port out))
       (parameterize ((current-directory (current-handling-directory)))
         (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
-      (void (sync thd)))))
+      (sync thd)
+      (void))))
