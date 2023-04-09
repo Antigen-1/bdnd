@@ -43,7 +43,7 @@
     (check-equal? (consult-huffman-tree 97 tree) '(0))
     (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
     (check-equal? (consult-huffman-tree 99 tree) '(1 1))
-    (check-equal? (consult-huffman-tree 100 tree) '(1 0 0))))
+    (check-equal? (consult-huffman-tree 100 tree) '(1 0 0 1))))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
