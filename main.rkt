@@ -91,18 +91,15 @@
   (define fl (parameterize ((current-directory (current-handling-directory)))
                (reverse
                 (for/fold ((r null)) ((p (in-directory)))
-                  (if (file-exists? p) (cons p r) r))))) ;; The predicate file-exists? works on the final destination of a link or series of links.
-
-  (define ofl (parameterize ((current-directory (current-handling-directory)))
-                (map (lambda (f) (cons (file-size f) (path->string f))) fl)))
+                  (if (file-exists? p) (cons (cons (file-size p) (path->string p)) r) r))))) ;; The predicate file-exists? works on the final destination of a link or series of links.
   
   (call-with-output-file
     (current-output-file)
     (lambda (out)
       (displayln "#lang bdnd" out)
       (write ht out)
-      (write ofl out)
+      (write fl out)
       (write (current-prefix) out)
       (define-values (ch thd) (compress-to-port out))
-      (map (lambda (f) (call-with-input-file f (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl)
+      (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl)
       (void (sync thd)))))
