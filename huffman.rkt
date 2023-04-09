@@ -81,7 +81,7 @@
 
 (define (consult-huffman-tree b t (r null))
   (cond ((node-is-leaf? t) (reverse r))
-        ((have-element? b (node-content (left-node t)) (consult-huffman-tree b (left-node t) (cons 0 r))))
+        ((have-element? b (node-content (left-node t))) (consult-huffman-tree b (left-node t) (cons 0 r)))
         (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
 
 (provide make-huffman-tree
