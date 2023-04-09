@@ -80,17 +80,9 @@
   (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
 
 (define (consult-huffman-tree b t (r null))
-  (cond ((node-is-leaf? t) (reverse r))
+  (cond ((and (node-is-leaf? (left-node t)) (= b (node-content (left-node t)))) (reverse (cons 0 r)))
+        ((and (node-is-leaf? (right-node t)) (= b (node-content (right-node t)))) (reverse (cons 1 r)))
         ((have-element? b (node-content (left-node t))) (consult-huffman-tree b (left-node t) (cons 0 r)))
         (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
 
-(provide make-huffman-tree
-         consult-huffman-tree
-         
-         make-node
-         node-content
-         node-frequency
-         node-is-leaf?
-         left-node
-         right-node
-         )
+(provide make-huffman-tree consult-huffman-tree)
