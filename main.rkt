@@ -39,11 +39,12 @@
   (test-case
       "codec"
     (define-values (in out) (make-pipe))
-    (define ch1 (compress-to-port out))
-    (define ch2 (decompress-from-port in))
+    (define-values (ch1 thd1) (compress-to-port out))
+    (define-values (ch2 _) (decompress-from-port in))
     (define bit-list '(0 1 1 0 1 0 1 1))
     (async-channel-put ch1 bit-list)
     (async-channel-put ch1 #f)
+    (sync (handle-evt (thread-dead-evt thd1) (lambda (_) (close-output-port out))))
     (check-equal? bit-list (sync ch2))
     (check-eq? #f (sync ch2)))
 

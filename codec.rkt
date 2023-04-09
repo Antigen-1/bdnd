@@ -8,7 +8,7 @@
     (cond ((null? l) r)
           (else (bit-list->byte (cdr l) (* 2 i) (+ r (* (car l) i))))))
   
-  (void
+  (define thd
    (thread
     (lambda ()
       (let loop ((rest null))
@@ -24,7 +24,7 @@
                            (loop ls)))
                      (cond ((not (null? rest)) (write-byte (bit-list->byte (append (make-list (- 8 (length rest)) 0) rest)) o)))))))))))
   
-  in-channel)
+  (values in-channel thd))
 
 (define (decompress-from-port i)
   (define out-channel (make-async-channel))
@@ -34,13 +34,13 @@
       (cond ((zero? b) (reverse r))
             (else (loop (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r))))))
   
-  (void
+  (define thd
    (thread
     (lambda ()
       (for ((b (in-port read-byte i)))
         (async-channel-put out-channel (byte->bit-list b)))
       (async-channel-put out-channel #f))))
 
-  out-channel)
+  (values out-channel thd))
 
 (provide decompress-from-port compress-to-port)
