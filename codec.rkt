@@ -14,12 +14,15 @@
       (let loop ((rest null))
         (sync (handle-evt
                in-channel
-               (lambda (l) (let ((ls (append rest l)))
-                             (if (>= (length ls) 8)
-                                 (let-values (((former latter) (split-at ls 8)))
-                                   (write-byte (bit-list->byte former) o)
-                                   (loop latter))
-                                 (loop ls))))))))))
+               (lambda (l)
+                 (if l
+                     (let ((ls (append rest l)))
+                       (if (>= (length ls) 8)
+                           (let-values (((former latter) (split-at ls 8)))
+                             (write-byte (bit-list->byte former) o)
+                             (loop latter))
+                           (loop ls)))
+                     (cond ((not (null? rest)) (write-byte (bit-list->byte (append (make-list (- 8 (length rest)) 0) rest)) o)))))))))))
   
   in-channel)
 
@@ -35,7 +38,8 @@
    (thread
     (lambda ()
       (for ((b (in-port read-byte i)))
-        (async-channel-put out-channel (byte->bit-list b))))))
+        (async-channel-put out-channel (byte->bit-list b)))
+      (async-channel-put out-channel #f))))
 
   out-channel)
 
