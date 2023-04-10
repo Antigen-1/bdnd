@@ -37,9 +37,7 @@
     (datum->syntax
      #f
      (append (list 'module (gensym 'bdnd) 'bdnd/expander)
-             (let loop ((r null))
-               (cond ((sync/timeout 0 (eof-evt port)) (reverse r))
-                     (else (loop (cons (list 'quote (fasl->s-exp port)) r))))))))
+             (for/list ((s (in-port (lambda (p) (if (sync/timeout 0 (eof-evt p)) eof (fasl->s-exp p))) port))) s))))
 
   (provide read-syntax))
 

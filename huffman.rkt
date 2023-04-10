@@ -15,7 +15,7 @@
   (let loop ((p path))
     (define rp (resolve-path p))
     (if (file-exists? rp)
-        (call-with-input-file rp (lambda (in) (|use port to update vector| in fv)))
+        (call-with-input-file* rp (lambda (in) (|use port to update vector| in fv)))
         (parameterize ((current-directory rp)) (for ((pd (in-directory))) (loop pd)))))
 
   fv)
