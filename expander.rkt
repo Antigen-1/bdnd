@@ -15,7 +15,7 @@
                                             (thread-receive-evt)
                                             (lambda (_) (let-values (((v r) (index-huffman-tree t (thread-receive))))
                                                           (if (byte? v)
-                                                              (begin (aysnc-channel-put ch v) (thread-rewind-receive (list r)) (loop tree))
+                                                              (begin (async-channel-put ch v) (thread-rewind-receive (list r)) (loop tree))
                                                               (loop v)))))))))))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
