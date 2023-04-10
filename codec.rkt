@@ -16,11 +16,11 @@
                in-channel
                (lambda (l)
                  (if l
-                     (let ((ls (append rest l)))
+                     (let work ((ls (append rest l)))
                        (if (>= (length ls) 8)
                            (let-values (((former latter) (split-at ls 8)))
                              (write-byte (bit-list->byte former) o)
-                             (loop latter))
+                             (work latter))
                            (loop ls)))
                      (cond ((not (null? rest))
                             (let loop ((r rest))
