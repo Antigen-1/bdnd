@@ -91,7 +91,7 @@
          (consult-huffman-tree b (left-node t) (cons 0 r)))
         (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
 
-(define (index-huffman-tree tree list)
+(define/caching (index-huffman-tree tree list)
   (let loop ((t tree) (l list))
     (cond ((node-is-leaf? t) (values (node-content t) l))
           ((null? l) (values t null))
