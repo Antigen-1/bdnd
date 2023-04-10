@@ -37,7 +37,7 @@
     (datum->syntax
      #f
      (append (list 'module (gensym 'bdnd) 'bdnd/expander)
-             (for/list ((s (in-port (lambda (p) (if (sync/timeout 0 (eof-evt p)) eof (fasl->s-exp p))) port))) s))))
+             (for/list ((s (in-port (lambda (p) (if (sync/timeout 0 (eof-evt p)) eof (fasl->s-exp p))) port))) (list 'quote s)))))
 
   (provide read-syntax))
 
