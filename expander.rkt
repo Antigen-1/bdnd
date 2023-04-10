@@ -36,6 +36,5 @@
                            (sync (handle-evt och
                                              (lambda (v)
                                                (write-byte v out)
-                                               (work (sub1 s))))))))))))))))
-                               
-  ))
+                                               (work (sub1 s)))))))))))))))
+    (sync (handle-evt mach void)))))
