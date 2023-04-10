@@ -100,7 +100,7 @@
                 (for/fold ((r null)) ((p (in-directory)))
                   (if (file-exists? p) (cons (cons (file-size p) (path->string p)) r) r))))) ;; The predicate file-exists? works on the final destination of a link or series of links.
   
-  (call-with-output-file
+  (call-with-output-file*
     (current-output-file)
     (lambda (out)
       (displayln "#lang bdnd" out)
@@ -111,7 +111,7 @@
       (define-values (ch compress-thd) (compress-to-port out-end))
       (define writer-thd (thread (lambda () (let loop () (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (s-exp->fasl b out) (loop))))))))))
       (parameterize ((current-directory (current-handling-directory)))
-        (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
+        (map (lambda (f) (call-with-input-file* (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
       (async-channel-put ch #f)
       (sync (handle-evt compress-thd (lambda (_) (close-output-port out-end))))
       (sync (handle-evt writer-thd void)))))
