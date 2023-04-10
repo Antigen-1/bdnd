@@ -36,9 +36,9 @@
   (define out-channel (make-async-channel))
 
   (define (byte->bit-list b)
-    (let loop ((b b) (r null))
-      (cond ((zero? b) (reverse r))
-            (else (loop (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r))))))
+    (let loop ((b b) (r null) (n 8))
+      (cond ((zero? n) (reverse r))
+            (else (loop (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r) (sub1 n))))))
   
   (define thd
    (thread
