@@ -111,4 +111,5 @@
                                                                (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (write b out) (loop))))))))))
       (parameterize ((current-directory (current-handling-directory)))
         (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
+      (async-channel-put ch #f)
       (thread-wait writer-thd))))
