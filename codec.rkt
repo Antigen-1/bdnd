@@ -15,21 +15,14 @@
         (sync (handle-evt
                in-channel
                (lambda (l)
-                 (if l
-                     (let work ((ls (append rest l)))
-                       (if (>= (length ls) 8)
-                           (let-values (((former latter) (split-at ls 8)))
-                             (write-byte (bit-list->byte former) o)
-                             (work latter))
-                           (loop ls)))
-                     (cond ((not (null? rest))
-                            (let loop ((r rest))
-                              (cond ((>= (length r) 8)
-                                     (let-values (((f l) (split-at r 8)))
-                                       (write-byte (bit-list->byte f) o)
-                                       (loop l)))
-                                    (else (write-byte (bit-list->byte r) o))))))))))))))
-  
+                 (let work ((ls (if l (append rest l) rest)))
+                   (if (>= (length ls) 8)
+                       (let-values (((former latter) (split-at ls 8)))
+                         (write-byte (bit-list->byte former) o)
+                         (work latter))
+                       (cond (l (loop ls))
+                             (else (write-byte (bit-list->byte ls) o))))))))))))
+                     
   (values in-channel thd))
 
 (define (decompress-from-port i)
