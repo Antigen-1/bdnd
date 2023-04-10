@@ -1,5 +1,5 @@
 #lang racket/base
-(require "codec.rkt" "huffman.rkt" racket/file racket/async-channel racket/port (for-syntax racket/base))
+(require "codec.rkt" "huffman.rkt" racket/file racket/port (for-syntax racket/base))
 (provide (rename-out (#%bdnd-module-begin #%module-begin)) (except-out (all-from-out racket/base) #%module-begin))
 
 (define-syntax-rule (#%bdnd-module-begin tree filelist prefix bytes ...)
@@ -21,16 +21,9 @@
                                                  (index l))))))))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
-      (let/cc next
-      (let loop ((l filelist))
-        (cond ((not (null? l))
-               (define size (caar l))
-               (define name (cdar l))
-               (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e)))) ;;the exception is re-raised
-                 (make-parent-directory* name)
-                 (call-with-output-file
-                   name
-                   (lambda (out)
-                     (copy-port (make-limited-input-port ipt size) out)
-                     (next (loop (cdr l)))))))))))
+      (map (lambda (f) (let ((name (cdr f))
+                             (size (car f)))
+                         (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e))))
+                           (call-with-output-file name (lambda (out) (copy-port (make-limited-input-port ipt size) out))))))
+           filelist))
     (sync (handle-evt mach void)))))
