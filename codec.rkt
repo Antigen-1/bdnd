@@ -22,7 +22,13 @@
                              (write-byte (bit-list->byte former) o)
                              (loop latter))
                            (loop ls)))
-                     (cond ((not (null? rest)) (write-byte (bit-list->byte (append (make-list (- 8 (length rest)) 0) rest)) o)))))))))))
+                     (cond ((not (null? rest))
+                            (let loop ((r rest))
+                              (cond ((>= (length r) 8)
+                                     (let-values (((f l) (split-at r 8)))
+                                       (write-byte (bit-list->byte f) o)
+                                       (loop l)))
+                                    (else (write-byte (bit-list->byte r) o))))))))))))))
   
   (values in-channel thd))
 
