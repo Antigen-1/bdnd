@@ -30,14 +30,15 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
+  (require racket/fasl racket/port)
+  
   (define (read-syntax src port)
     (datum->syntax
      #f
      (append (list 'module (gensym 'bdnd) 'bdnd/expander)
              (let loop ((r null))
-               (define v (read port))
-               (cond ((eof-object? v) (reverse r))
-                     (else (loop (cons (list 'quote v) r))))))))
+               (cond ((sync/timeout 0 (eof-evt port)) (reverse r))
+                     (else (loop (cons (list 'quote (fasl->s-exp port)) r))))))))
 
   (provide read-syntax))
 
@@ -80,7 +81,7 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel racket/port)
+  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel racket/port racket/fasl)
   
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
@@ -102,13 +103,13 @@
     (current-output-file)
     (lambda (out)
       (displayln "#lang bdnd" out)
-      (write ht out)
-      (write fl out)
-      (write (current-prefix) out)
+      (s-exp->fasl ht out)
+      (s-exp->fasl fl out)
+      (s-exp->fasl (current-prefix) out)
       (define-values (in-end out-end) (make-pipe))
       (define-values (ch compress-thd) (compress-to-port out-end))
       (define writer-thd (thread (lambda () (let loop () (sync (handle-evt compress-thd (lambda (_) (close-output-port out-end) (loop)))
-                                                               (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (write b out) (loop))))))))))
+                                                               (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (s-exp->fasl b out) (loop))))))))))
       (parameterize ((current-directory (current-handling-directory)))
         (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
       (async-channel-put ch #f)
