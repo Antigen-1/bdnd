@@ -24,6 +24,7 @@
       (map (lambda (f) (let ((name (cdr f))
                              (size (car f)))
                          (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e))))
+                           (make-parent-directory* name)
                            (call-with-output-file name (lambda (out) (copy-port (make-limited-input-port ipt size) out))))))
            filelist))
     (sync (handle-evt mach void)))))
