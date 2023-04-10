@@ -21,6 +21,7 @@
                          (write-byte (bit-list->byte former) o)
                          (work latter))
                        (cond (l (loop ls))
+                             ((null? ls))
                              (else (write-byte (bit-list->byte ls) o))))))))))))
                      
   (values in-channel thd))
