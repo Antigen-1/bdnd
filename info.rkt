@@ -1,7 +1,7 @@
 #lang info
 (define collection "bdnd")
 (define deps '("base"))
-(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
+(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib" "sugar"))
 (define scribblings '(("scribblings/bdnd.scrbl" ())))
 (define pkg-desc "Description Here")
 (define version "0.0")

@@ -82,7 +82,9 @@
 (define (make-huffman-tree path)
   (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
 
-(define (consult-huffman-tree b t (r null))
+(require sugar/cache)
+
+(define/caching (consult-huffman-tree b t (r null))
   (cond ((node-is-leaf? t) (reverse r))
         ((or (and (not (node-is-leaf? (left-node t))) (byte-set-have? b (node-content (left-node t))))
              (and (node-is-leaf? (left-node t)) (= b (node-content (left-node t)))))
