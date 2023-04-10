@@ -37,7 +37,7 @@
              (let loop ((r null))
                (define v (read port))
                (cond ((eof-object? v) (reverse r))
-                     (else (loop (cons v r))))))))
+                     (else (loop (cons (list 'quote v) r))))))))
 
   (provide read-syntax))
 
