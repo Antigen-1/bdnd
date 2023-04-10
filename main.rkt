@@ -105,5 +105,4 @@
       (define-values (ch thd) (compress-to-port out))
       (parameterize ((current-directory (current-handling-directory)))
         (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
-      (sync thd)
-      (void))))
+      (void (sync thd)))))

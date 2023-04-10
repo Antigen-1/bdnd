@@ -89,5 +89,11 @@
          (consult-huffman-tree b (left-node t) (cons 0 r)))
         (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
 
-(provide make-huffman-tree consult-huffman-tree
-	 left-node right-node node-content node-is-leaf?)
+(define (index-huffman-tree tree list)
+  (let loop ((t tree) (l list))
+    (cond ((node-is-leaf? t) (values (node-content t) l))
+          ((null? l) (values t null))
+          (else (loop (if (zero? (car l)) (left-node t) (right-node t))
+                      (cdr l))))))
+
+(provide make-huffman-tree consult-huffman-tree index-huffman-tree)
