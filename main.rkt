@@ -33,6 +33,7 @@
   (require racket/fasl racket/port)
   
   (define (read-syntax src port)
+    (read-line port)
     (datum->syntax
      #f
      (append (list 'module (gensym 'bdnd) 'bdnd/expander)
