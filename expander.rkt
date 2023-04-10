@@ -5,16 +5,16 @@
 (define-syntax-rule (#%bdnd-module-begin tree filelist prefix bytes ...)
   (#%module-begin
   (let*-values (((ich thd) (decompress-from-port (input-port-append (open-input-bytes bytes) ...)))
-                ((och mach) (let ((ch (make-async-channel)))
+                ((ipt mach) (let-values (((i o) (make-pipe)))
                               (values
-                               ch
+                               i
                                (thread (lambda ()
                                          (let/cc exit
                                            (let loop ((t tree) (l null))
                                              (define (index l)
                                                (let ((r (index-huffman-tree t (cond (l) (else (exit))))))
                                                  (if (byte? (car r))
-                                                     (begin (async-channel-put ch (car r)) (loop tree (cdr r)))
+                                                     (begin (write-byte (car r) o) (loop tree (cdr r)))
                                                      (loop (car r) null))))
                                              (if (null? l)
                                                  (sync (handle-evt ich index))
@@ -31,11 +31,6 @@
                  (call-with-output-file
                    name
                    (lambda (out)
-                     (let work ((s size))
-                       (if (zero? s)
-                           (next (loop (cdr l)))
-                           (sync (handle-evt och
-                                             (lambda (v)
-                                               (write-byte v out)
-                                               (work (sub1 s)))))))))))))))
+                     (copy-port (make-limited-input-port ipt size) out)
+                     (next (loop (cdr l)))))))))))
     (sync (handle-evt mach void)))))
