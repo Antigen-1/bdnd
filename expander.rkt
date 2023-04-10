@@ -14,10 +14,10 @@
                                              (sync
                                               (handle-evt
                                                ich
-                                               (lambda (l) (let-values (((v r) (index-huffman-tree t (cond (l) (else (exit))))))
-                                                             (if (byte? v)
-                                                                 (begin (async-channel-put ch v) (thread-rewind-receive (list r)) (loop tree))
-                                                                 (loop v))))))))))))))
+                                               (lambda (l) (let ((r (index-huffman-tree t (cond (l) (else (exit))))))
+                                                             (if (byte? (car r))
+                                                                 (begin (async-channel-put ch (car r)) (thread-rewind-receive (list (cdr r))) (loop tree))
+                                                                 (loop (car r)))))))))))))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
       (let loop ((l filelist))

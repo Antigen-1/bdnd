@@ -93,8 +93,8 @@
 
 (define/caching (index-huffman-tree tree list)
   (let loop ((t tree) (l list))
-    (cond ((node-is-leaf? t) (values (node-content t) l))
-          ((null? l) (values t null))
+    (cond ((node-is-leaf? t) (cons (node-content t) l))
+          ((null? l) (cons t null))
           (else (loop (if (zero? (car l)) (left-node t) (right-node t))
                       (cdr l))))))
 
