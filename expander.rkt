@@ -1,6 +1,6 @@
 #lang racket/base
 (require "codec.rkt" "huffman.rkt" racket/file racket/async-channel racket/port (for-syntax racket/base))
-(provide (rename-out (#%bdnd-module-begin #%module-begin)) #%datum)
+(provide (rename-out (#%bdnd-module-begin #%module-begin)) (except-out (all-from-out racket/base) #%module-begin))
 
 (define-syntax-rule (#%bdnd-module-begin tree filelist prefix bytes ...)
   (#%module-begin
