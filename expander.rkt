@@ -3,6 +3,7 @@
 (provide (rename-out (#%bdnd-module-begin #%module-begin)))
 
 (define-syntax-rule (#%bdnd-module-begin tree filelist prefix bytes ...)
+  (#%module-begin
   (let-values (((ich thd) (decompress-from-port (input-port-append (open-input-bytes bytes) ...)))
                ((och mach) (let ((ch (make-async-channel)))
                              (values
@@ -39,3 +40,4 @@
                                                (write-byte v out)
                                                (work (sub1 s))))))))))))))))
                                
+  )
