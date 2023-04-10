@@ -68,7 +68,7 @@
     (define tree (make-huffman-tree test-file))
     (define-values (byte rest) (index-huffman-tree tree '(1 0 0 1)))
     (check-eq? rest null)
-    (check-= byte 100)
+    (check-eq? byte 100)
     (check-equal? (consult-huffman-tree 97 tree) '(0))
     (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
     (check-equal? (consult-huffman-tree 99 tree) '(1 1))
