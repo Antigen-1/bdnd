@@ -13,8 +13,8 @@
                                            (let loop ((t tree))
                                              (sync
                                               (handle-evt
-                                               ich
-                                               (lambda (l) (let ((r (index-huffman-tree t (cond (l) (else (exit))))))
+                                               (choice-evt ich (thread-receive-evt))
+                                               (lambda (l) (let ((r (index-huffman-tree t (cond ((evt? l) (thread-receive)) (l) (else (exit))))))
                                                              (if (byte? (car r))
                                                                  (begin (async-channel-put ch (car r)) (thread-rewind-receive (list (cdr r))) (loop tree))
                                                                  (loop (car r)))))))))))))))
