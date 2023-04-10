@@ -20,6 +20,7 @@
                                                                  (loop (car r)))))))))))))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
+      (let/cc next
       (let loop ((l filelist))
         (cond ((not (null? l))
                (define size (caar l))
@@ -31,10 +32,10 @@
                    (lambda (out)
                      (let work ((s size))
                        (if (zero? s)
-                           (loop (cdr l))
+                           (next (loop (cdr l)))
                            (sync (handle-evt och
                                              (lambda (v)
                                                (write-byte v out)
                                                (work (sub1 s))))))))))))))))
                                
-  )
+  ))
