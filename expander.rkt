@@ -1,9 +1,9 @@
 #lang racket/base
-(require "codec.rkt" "huffman.rkt" racket/file racket/async-channel (for-syntax racket/base))
+(require "codec.rkt" "huffman.rkt" racket/file racket/async-channel racket/port (for-syntax racket/base))
 (provide (rename-out (#%bdnd-module-begin #%module-begin)))
 
-(define-syntax-rule (#%bdnd-module-begin tree filelist prefix port)
-  (let-values (((ich thd) (decompress-from-port port))
+(define-syntax-rule (#%bdnd-module-begin tree filelist prefix bytes ...)
+  (let-values (((ich thd) (decompress-from-port (input-port-append (open-input-bytes bytes) ...)))
                ((och mach) (let ((ch (make-async-channel)))
                              (values
                               ch

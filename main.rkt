@@ -33,11 +33,11 @@
   (define (read-syntax src port)
     (datum->syntax
      #f
-     (list 'module (gensym 'bdnd) 'bdnd/expander
-           (read port)
-           (read port)
-           (read port)
-           port)))
+     (append (list 'module (gensym 'bdnd) 'bdnd/expander)
+             (let loop ((r null))
+               (define v (read port))
+               (cond ((eof-object? v) (reverse r))
+                     (else (loop (cons v r))))))))
 
   (provide read-syntax))
 
@@ -80,7 +80,7 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel)
+  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel racket/port)
   
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
@@ -105,7 +105,10 @@
       (write ht out)
       (write fl out)
       (write (current-prefix) out)
-      (define-values (ch thd) (compress-to-port out))
+      (define-values (in-end out-end) (make-pipe))
+      (define-values (ch compress-thd) (compress-to-port out-end))
+      (define writer-thd (thread (lambda () (let loop () (sync (handle-evt compress-thd (lambda (_) (close-output-port out-end) (loop)))
+                                                               (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (write b out) (loop))))))))))
       (parameterize ((current-directory (current-handling-directory)))
         (map (lambda (f) (call-with-input-file (cdr f) (lambda (in) (for ((b (in-port read-byte in))) (async-channel-put ch (consult-huffman-tree b ht)))))) fl))
-      (void (sync thd)))))
+      (void (sync writer-thd)))))
