@@ -44,14 +44,16 @@
     (thread
      (lambda ()
        (let loop ()
-         (sync in-channel
-               (lambda (port)
-                 (if port
-                     (begin
-                       (for ((b (in-port read-byte port)))
-                         (async-channel-put out-channel (byte->bit-list b)))
-                       (loop))
-                     (void))))))))
+         (sync
+          (handle-evt
+           in-channel
+           (lambda (port)
+             (if port
+                 (begin
+                   (for ((b (in-port read-byte port)))
+                     (async-channel-put out-channel (byte->bit-list b)))
+                   (loop))
+                 (void)))))))))
 
   (values in-channel out-channel thd))
 
