@@ -116,4 +116,4 @@
       (async-channel-put ch #f)
       (sync (handle-evt compress-thd (lambda (_) (close-output-port out-end))))
       (sync writer-thd)
-      (s-exp->fasl fl out))))
+      (s-exp->fasl (reverse fl) out))))
