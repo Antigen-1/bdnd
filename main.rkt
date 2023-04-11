@@ -66,13 +66,10 @@
       "huffman"
     (define test-file (build-path test-dir "huffman"))
     (define tree (make-huffman-tree test-file))
-    (define result (index-huffman-tree tree '(1 0 0 1)))
-    (check-eq? (car result) 100)
-    (check-eq? (cdr result) null)
     (check-equal? (consult-huffman-tree 97 tree) '(0))
     (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
-    (check-equal? (consult-huffman-tree 99 tree) '(1 1))
-    (check-equal? (consult-huffman-tree 100 tree) '(1 0 0 1))))
+    (check-equal? (index-huffman-tree tree (consult-huffman-tree 99 tree)) '(99))
+    (check-equal? (index-huffman-tree tree (consult-huffman-tree 100 tree)) '(100))))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
