@@ -22,7 +22,7 @@
                                       (if (byte? (car r))
                                           (begin (write-byte (car r) out) (loop tree (cdr r) (sub1 s)))
                                           (loop (car r) null s))))
-                                  (cond ((zero? s) (sync ich))
+                                  (cond ((zero? s))
                                         ((null? l)
                                          (sync (handle-evt ich index)))
                                         (else (index l)))))))))

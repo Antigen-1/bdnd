@@ -46,21 +46,22 @@
   ;; or with `raco test`. The code here does not run when this file is
   ;; required by another module.
 
-  (require racket/async-channel "codec.rkt")
+  (require racket/async-channel racket/port "codec.rkt")
 
   (test-case
       "codec"
     (define-values (in out) (make-pipe))
-    (define-values (ch1 thd1) (compress-to-port))
+    (define-values (ch ch1 thd1) (compress-to-port))
     (define-values (ch2 ch3 _) (decompress-from-port))
     (define bit-list '(0 1 1 0 1 0 1 1))
-    (async-channel-put ch1 out)
+    (async-channel-put ch out)
     (async-channel-put ch2 in)
-    (async-channel-put ch1 bit-list)
-    (async-channel-put ch1 #f)
+    (async-channel-put ch bit-list)
+    (async-channel-put ch (open-output-nowhere))
+    (async-channel-put ch #f)
     (sync (handle-evt (thread-dead-evt thd1) (lambda (_) (close-output-port out))))
     (check-equal? (sync ch3) bit-list)
-    (check-eq? (sync ch3) #f))
+    (check-eq? (sync ch1) #f))
 
   (require "huffman.rkt")
   
@@ -100,22 +101,22 @@
         (s-exp->fasl ht out)
         (s-exp->fasl (current-prefix) out)
         (flush-output out)
-        (define-values (ch compress-thd) (compress-to-port))
+        (define-values (och ich _) (compress-to-port))
         (parameterize ((current-directory (current-handling-directory)))
           (for ((f (in-directory)))
             (define-values (in-end out-end) (make-pipe))
-            (async-channel-put ch out-end)
+            (async-channel-put och out-end)
             (s-exp->fasl
              (append
               (call-with-input-file* f (lambda (in)
                                          (list
                                           (for/fold ((s 0)) ((b (in-port read-byte in)))
-                                            (async-channel-put ch (consult-huffman-tree b ht))
+                                            (async-channel-put och (consult-huffman-tree b ht))
                                             (add1 s))
                                           (path->string f))))
               (begin
-                (async-channel-put ch (open-output-nowhere))
+                (async-channel-put och (open-output-nowhere))
                 (let loop ((r null)) (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (if (eof-object? b) (reverse r) (loop (cons b r)))))
-                                           (handle-evt compress-thd (lambda (_) (close-output-port out-end)))))))
+                                           (handle-evt ich (lambda (_) (close-output-port out-end)))))))
              out)
             (flush-output out)))))))
