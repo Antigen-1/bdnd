@@ -10,7 +10,7 @@
        (map (lambda (f) (let ((name (cadr f))
                               (size (car f))
                               (bytes-list (cddr f)))
-                          (async-channel-put och (apply input-port-append (map open-input-bytes bytes-list)))
+                          (map (lambda (b) (async-channel-put och (open-input-bytes b))) bytes-list)
                           (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e))))
                             (make-parent-directory* name)
                             (call-with-output-file*
