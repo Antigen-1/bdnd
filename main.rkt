@@ -119,4 +119,5 @@
                 (let loop ((r null)) (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (if (eof-object? b) (reverse r) (loop (cons b r)))))
                                            (handle-evt ich (lambda (_) (close-output-port out-end)))))))
              out)
-            (flush-output out)))))))
+            (flush-output out))
+          (async-channel-put och #f))))))
