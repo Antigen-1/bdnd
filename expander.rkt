@@ -2,7 +2,7 @@
 (require "codec.rkt" "huffman.rkt" racket/file racket/port (for-syntax racket/base))
 (provide (rename-out (#%bdnd-module-begin #%module-begin)) (except-out (all-from-out racket/base) #%module-begin))
 
-(define-syntax-rule (#%bdnd-module-begin tree filelist prefix bytes ...)
+(define-syntax-rule (#%bdnd-module-begin tree prefix bytes ... filelist)
   (#%module-begin
   (let*-values (((ich thd) (decompress-from-port (input-port-append (open-input-bytes bytes) ...)))
                 ((ipt mach) (let-values (((i o) (make-pipe)))
