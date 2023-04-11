@@ -96,9 +96,10 @@
       (displayln "#lang bdnd" out)
       (s-exp->fasl ht out)
       (s-exp->fasl (current-prefix) out)
+      (flush-output out)
       (define-values (in-end out-end) (make-pipe))
       (define-values (ch compress-thd) (compress-to-port out-end))
-      (define writer-thd (thread (lambda () (let loop () (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (s-exp->fasl b out) (loop))))))))))
+      (define writer-thd (thread (lambda () (let loop () (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (cond ((not (eof-object? b)) (s-exp->fasl b out) (flush-output out) (loop))))))))))
       (define fl
         (parameterize ((current-directory (current-handling-directory)))
           (for/fold ((r null)) ((f (in-directory)))
@@ -113,4 +114,5 @@
       (async-channel-put ch #f)
       (sync (handle-evt compress-thd (lambda (_) (close-output-port out-end))))
       (sync writer-thd)
-      (s-exp->fasl (reverse fl) out))))
+      (s-exp->fasl (reverse fl) out)
+      (flush-output out))))
