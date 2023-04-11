@@ -123,6 +123,7 @@
         (define-values (och ich _) (compress-to-port))
         (parameterize ((current-directory (current-handling-directory)))
           (for ((f (in-directory)))
+            (collect-garbage 'incremental)
             (define-values (in-end out-end) (make-pipe))
             (async-channel-put och out-end)
             (s-exp->fasl

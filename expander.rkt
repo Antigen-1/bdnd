@@ -10,6 +10,7 @@
        (map (lambda (f) (let ((name (cadr f))
                               (size (car f))
                               (bytes-list (cddr f)))
+                          (collect-garbage 'incremental)
                           (map (lambda (b) (async-channel-put och (open-input-bytes b))) bytes-list)
                           (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e))))
                             (make-parent-directory* name)
