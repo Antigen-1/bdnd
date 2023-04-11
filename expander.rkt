@@ -2,7 +2,7 @@
 (require "codec.rkt" "huffman.rkt" racket/file racket/port racket/async-channel (for-syntax racket/base))
 (provide (rename-out (#%bdnd-module-begin #%module-begin)) (except-out (all-from-out racket/base) #%module-begin))
 
-(define-syntax-rule (#%bdnd-module-begin tree prefix filelist)
+(define-syntax-rule (#%bdnd-module-begin tree prefix file ...)
   (#%module-begin
    (let*-values (((och ich thd) (decompress-from-port)))
      (make-directory* prefix)
@@ -26,5 +26,5 @@
                                         ((null? l)
                                          (sync (handle-evt ich index)))
                                         (else (index l)))))))))
-            filelist))
+            (list file ...)))
      (async-channel-put och #f))))
