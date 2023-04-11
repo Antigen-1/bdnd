@@ -3,7 +3,7 @@
 
 (define (compress-to-port)
   (define in-channel (make-async-channel))
-  (define flag-channel (make-async-channel))
+  (define out-channel (make-async-channel))
 
   (define/caching (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
@@ -18,7 +18,7 @@
                 (lambda (l)
                   (cond ((output-port? l)
                          (cond ((null? rest)) (else (write-byte (bit-list->byte rest) port)))
-                         (async-channel-put flag-channel #f)
+                         (cond (port (async-channel-put out-channel port)))
                          (loop null l))
                         ((not l) (cond ((null? rest)) (write-byte (bit-list->byte rest) port)))
                         (else
@@ -29,7 +29,7 @@
                                  (work latter))
                                (loop ls port))))))))))))
                      
-  (values in-channel flag-channel thd))
+  (values in-channel out-channel thd))
 
 (define (decompress-from-port)
   (define in-channel (make-async-channel))

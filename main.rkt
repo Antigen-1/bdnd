@@ -51,17 +51,16 @@
   (test-case
       "codec"
     (define-values (in out) (make-pipe))
-    (define-values (ch ch1 thd1) (compress-to-port))
-    (define-values (ch2 ch3 _) (decompress-from-port))
+    (define-values (ch ch1 _1) (compress-to-port))
+    (define-values (ch2 ch3 _2) (decompress-from-port))
     (define bit-list '(0 1 1 0 1 0 1 1))
     (async-channel-put ch out)
     (async-channel-put ch2 in)
     (async-channel-put ch bit-list)
     (async-channel-put ch (open-output-nowhere))
     (async-channel-put ch #f)
-    (sync (handle-evt (thread-dead-evt thd1) (lambda (_) (close-output-port out))))
-    (check-equal? (sync ch3) bit-list)
-    (check-eq? (sync ch1) #f))
+    (check-eq? (sync ch1 (lambda (p) (close-output-port p) p)) out)
+    (check-equal? (sync ch3) bit-list))
 
   (require "huffman.rkt")
   
@@ -117,7 +116,7 @@
               (begin
                 (async-channel-put och (open-output-nowhere))
                 (let loop ((r null)) (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (if (eof-object? b) (reverse r) (loop (cons b r)))))
-                                           (handle-evt ich (lambda (_) (close-output-port out-end)))))))
+                                           (handle-evt ich (lambda (p) (close-output-port p)))))))
              out)
             (flush-output out))
           (async-channel-put och #f))))))
