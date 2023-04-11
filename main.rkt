@@ -59,7 +59,7 @@
     (async-channel-put ch bit-list)
     (async-channel-put ch (open-output-nowhere))
     (async-channel-put ch #f)
-    (check-eq? (sync ch1 (lambda (p) (close-output-port p) p)) out)
+    (check-eq? (sync (handle-evt ch1 (lambda (p) (close-output-port p) p)) out))
     (check-equal? (sync ch3) bit-list))
 
   (require "huffman.rkt")
