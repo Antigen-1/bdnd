@@ -16,18 +16,18 @@
          (sync (handle-evt
                 in-channel
                 (lambda (l)
-                  (if (output-port? l)
-                      (begin (cond ((null? rest)) (else (write-byte (bit-list->byte rest) port)))
-                             (async-channel-put flag-channel #f)
-                             (loop null l))
-                      (let work ((ls (if l (append rest l) rest)))
-                        (if (>= (length ls) 8)
-                            (let-values (((former latter) (split-at ls 8)))
-                              (write-byte (bit-list->byte former) port)
-                              (work latter))
-                            (cond (l (loop ls port))
-                                  ((null? ls))
-                                  (else (write-byte (bit-list->byte ls) port)))))))))))))
+                  (cond ((output-port? l)
+                         (cond ((null? rest)) (else (write-byte (bit-list->byte rest) port)))
+                         (async-channel-put flag-channel #f)
+                         (loop null l))
+                        ((not l) (cond ((null? rest)) (write-byte (bit-list->byte rest) port)))
+                        (else
+                         (let work ((ls (append rest l)))
+                           (if (>= (length ls) 8)
+                               (let-values (((former latter) (split-at ls 8)))
+                                 (write-byte (bit-list->byte former) port)
+                                 (work latter))
+                               (loop ls port))))))))))))
                      
   (values in-channel flag-channel thd))
 
