@@ -25,4 +25,5 @@
                                             (sync (handle-evt ich index)))
                                            (else (index l)))))))))
              null
-             filelist))))
+             filelist))
+    (sync (handle-evt thd void))))
