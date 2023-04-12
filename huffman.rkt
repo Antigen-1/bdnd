@@ -35,6 +35,7 @@
 (define (sort-frequency-vector-to-list fv)
   (let loop ((i 0) (r null))
     (cond ((= i 256) r)
+          ((zero? (vector-ref fv i)) (loop (add1 i) r))
           (else (loop (add1 i) (insert-node (make-node (vector-ref fv i) i) r))))))
 
 (require set)
@@ -77,7 +78,6 @@
   (let loop ((l l))
     (cond ((null? l) #f)
           ((null? (cdr l)) (car l))
-          ((zero? (node-frequency (car l))) (loop (cdr l)))
           (else (loop (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l)))))))
 
 (define (make-huffman-tree path)
