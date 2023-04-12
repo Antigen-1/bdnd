@@ -80,23 +80,27 @@
           ((null? (cdr l)) (car l))
           (else (loop (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l)))))))
 
+(define (cleanse-huffman-tree tree)
+  (cond ((node-is-leaf? tree) (node-content tree))
+        (else (list (node-content tree) (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
+
 (define (make-huffman-tree path)
-  (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
+  (cleanse-huffman-tree (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path)))))
 
 (require sugar/cache)
 
 (define/caching (consult-huffman-tree b t (r null))
-  (cond ((node-is-leaf? t) (reverse r))
-        ((or (and (not (node-is-leaf? (left-node t))) (byte-set-have? b (node-content (left-node t))))
-             (and (node-is-leaf? (left-node t)) (= b (node-content (left-node t)))))
-         (consult-huffman-tree b (left-node t) (cons 0 r)))
-        (else (consult-huffman-tree b (right-node t) (cons 1 r)))))
+  (cond ((byte? t) (reverse r))
+        ((or (and (not (byte? (cadr t))) (byte-set-have? b (car (cadr t))))
+             (and (byte? (cadr t)) (= b (cadr t))))
+         (consult-huffman-tree b (cadr t) (cons 0 r)))
+        (else (consult-huffman-tree b (caddr t) (cons 1 r)))))
 
 (define/caching (index-huffman-tree tree list)
   (let loop ((t tree) (l list))
-    (cond ((node-is-leaf? t) (cons (node-content t) l))
+    (cond ((byte? t) (cons t l))
           ((null? l) (cons t null))
-          (else (loop (if (zero? (car l)) (left-node t) (right-node t))
+          (else (loop (if (zero? (car l)) (cadr t) (caddr t))
                       (cdr l))))))
 
 (provide make-huffman-tree consult-huffman-tree index-huffman-tree)
