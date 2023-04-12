@@ -77,6 +77,7 @@
   (let loop ((l l))
     (cond ((null? l) #f)
           ((null? (cdr l)) (car l))
+          ((zero? (node-frequency (car l))) (loop (cdr l)))
           (else (loop (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l)))))))
 
 (define (make-huffman-tree path)
