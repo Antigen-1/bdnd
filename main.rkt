@@ -30,14 +30,17 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
-  (require racket/fasl racket/port)
+  (require racket/fasl)
   
   (define (read-syntax src port)
     (read-line port)
     (datum->syntax
      #f
-     (append (list 'module (gensym 'bdnd) 'bdnd/expander)
-             (for/list ((s (in-port (lambda (p) (if (sync/timeout 0 (eof-evt p)) eof (fasl->s-exp p))) port))) (list 'quote s)))))
+     (list 'module (gensym 'bdnd) 'bdnd/expander
+           (list 'quote (fasl->s-exp port))
+           (list 'quote (fasl->s-exp port))
+           (list 'quote (fasl->s-exp port))
+           port)))
 
   (provide read-syntax))
 
@@ -54,33 +57,34 @@
     (define bytes2 (crypto-random-bytes 32))
     (define bytes3 (crypto-random-bytes 64))
     (define bytes4 (crypto-random-bytes 128))
+    (define bytes5 (crypto-random-bytes 256))
     (define-values (in out) (make-pipe))
     (newline out)
     (map (lambda (b) (s-exp->fasl b out)) (list (list bytes1 bytes2) bytes3 bytes4))
+    (write-bytes bytes5 out)
     (close-output-port out)
     (check-match (syntax->datum (read-syntax #f in))
                  (list 'module _ 'bdnd/expander
                        (list 'quote (list b1 b2))
                        (list 'quote b3)
-                       (list 'quote b4))
+                       (list 'quote b4)
+                       i)
                  (and (bytes=? b1 bytes1)
                       (bytes=? b2 bytes2)
                       (bytes=? b3 bytes3)
-                      (bytes=? b4 bytes4))))
+                      (bytes=? b4 bytes4)
+                      (bytes=? (port->bytes i) bytes5))))
   
   (test-case
       "codec"
     (define-values (in out) (make-pipe))
-    (define-values (ch ch1 _1) (compress-to-port))
-    (define-values (ch2 ch3 _2) (decompress-from-port))
+    (define-values (ch ch1 _1) (compress-to-port out))
+    (define-values (ch2 _2) (decompress-from-port in))
     (define bit-list '(0 1 1 0 1 0 1 1))
-    (async-channel-put ch out)
-    (async-channel-put ch2 in)
     (async-channel-put ch bit-list)
-    (async-channel-put ch (open-output-nowhere))
     (async-channel-put ch #f)
     (check-eq? (sync (handle-evt ch1 (lambda (p) (close-output-port p) p))) out)
-    (check-equal? (sync ch3) bit-list))
+    (check-equal? (sync ch2) bit-list))
 
   (require "huffman.rkt")
   
@@ -99,7 +103,7 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel racket/port racket/fasl)
+  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel racket/port racket/fasl racket/file)
   
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
@@ -112,32 +116,44 @@
   
   (define ht (make-huffman-tree (current-handling-directory)))
 
-  (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file (current-output-file)) (raise e))))
-    (call-with-output-file*
-      (current-output-file)
-      (lambda (out)
-        (displayln "#lang bdnd" out)
-        (s-exp->fasl ht out)
-        (s-exp->fasl (current-prefix) out)
-        (flush-output out)
-        (define-values (och ich _) (compress-to-port))
-        (parameterize ((current-directory (current-handling-directory)))
-          (for ((f (in-directory)))
-            (collect-garbage 'incremental)
-            (define-values (in-end out-end) (make-pipe))
-            (async-channel-put och out-end)
-            (s-exp->fasl
-             (append
-              (call-with-input-file* f (lambda (in)
-                                         (list
-                                          (for/fold ((s 0)) ((b (in-port read-byte in)))
-                                            (async-channel-put och (consult-huffman-tree b ht))
-                                            (add1 s))
-                                          (path->string f))))
-              (begin
-                (async-channel-put och (open-output-nowhere))
-                (let loop ((r null)) (sync (handle-evt (read-bytes-evt 1000 in-end) (lambda (b) (if (eof-object? b) (reverse r) (loop (cons b r)))))
-                                           (handle-evt ich (lambda (p) (close-output-port p) (loop r)))))))
-             out)
-            (flush-output out))
-          (async-channel-put och #f))))))
+  (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
+    (define temp (make-temporary-file))
+    (define fl
+      (call-with-output-file*
+        #:exists 'truncate/replace
+        temp
+        (lambda (out)
+          (define-values (in-end out-end) (make-pipe))
+          (define-values (och ich _) (compress-to-port out-end))
+          (define thd (thread (lambda () (copy-port in-end out))))
+          (define filelist
+            (parameterize ((current-directory (current-handling-directory)))
+              (for/fold ((r null)) ((f (in-directory)))
+                (collect-garbage 'incremental)
+                (cond ((file-exists? f)
+                       (call-with-input-file*
+                         f
+                         (lambda (in)
+                           (cons
+                            (list
+                             (for/fold ((s 0)) ((b (in-port read-byte in)))
+                               (async-channel-put och (consult-huffman-tree b ht))
+                               (add1 s))
+                             (path->string f))
+                            r))))
+                      (else r)))))
+          (async-channel-put och #f)
+          (sync (handle-evt ich close-output-port))
+          (sync thd)
+          filelist)))
+    (call-with-input-file*
+      temp
+      (lambda (in)
+        (call-with-output-file*
+          (current-output-file)
+          (lambda (fout)
+            (displayln "#lang bdnd" fout)
+            (s-exp->fasl fl fout)
+            (s-exp->fasl ht fout)
+            (s-exp->fasl (current-prefix) fout)
+            (copy-port in fout)))))))

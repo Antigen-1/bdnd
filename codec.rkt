@@ -1,7 +1,7 @@
 #lang racket/base
 (require racket/async-channel racket/list sugar/cache)
 
-(define (compress-to-port)
+(define (compress-to-port port)
   (define in-channel (make-async-channel))
   (define out-channel (make-async-channel))
 
@@ -12,27 +12,23 @@
   (define thd
     (thread
      (lambda ()
-       (let loop ((rest null) (port #f))
+       (let loop ((rest null))
          (sync (handle-evt
                 in-channel
                 (lambda (l)
-                  (cond ((output-port? l)
-                         (cond ((null? rest)) (else (write-byte (bit-list->byte rest) port)))
-                         (cond (port (async-channel-put out-channel port)))
-                         (loop null l))
-                        ((not l) (cond ((null? rest)) (write-byte (bit-list->byte rest) port)))
+                  (cond ((not l) (cond ((not (null? rest)) (write-byte (bit-list->byte rest) port)))
+                                 (async-channel-put out-channel port))
                         (else
                          (let work ((ls (append rest l)))
                            (if (>= (length ls) 8)
                                (let-values (((former latter) (split-at ls 8)))
                                  (write-byte (bit-list->byte former) port)
                                  (work latter))
-                               (loop ls port))))))))))))
+                               (loop ls))))))))))))
                      
   (values in-channel out-channel thd))
 
-(define (decompress-from-port)
-  (define in-channel (make-async-channel))
+(define (decompress-from-port port)
   (define out-channel (make-async-channel))
 
   (define/caching (byte->bit-list b)
@@ -43,18 +39,9 @@
   (define thd
     (thread
      (lambda ()
-       (let loop ()
-         (sync
-          (handle-evt
-           in-channel
-           (lambda (port)
-             (if port
-                 (begin
-                   (for ((b (in-port read-byte port)))
-                     (async-channel-put out-channel (byte->bit-list b)))
-                   (loop))
-                 (void)))))))))
+       (for ((b (in-port read-byte port)))
+         (async-channel-put out-channel (byte->bit-list b))))))
 
-  (values in-channel out-channel thd))
+  (values out-channel thd))
 
 (provide decompress-from-port compress-to-port)

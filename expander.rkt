@@ -1,17 +1,15 @@
 #lang racket/base
-(require "codec.rkt" "huffman.rkt" racket/file racket/async-channel (for-syntax racket/base))
+(require "codec.rkt" "huffman.rkt" racket/file (for-syntax racket/base))
 (provide (rename-out (#%bdnd-module-begin #%module-begin)) (except-out (all-from-out racket/base) #%module-begin))
 
-(define-syntax-rule (#%bdnd-module-begin tree prefix file ...)
+(define-syntax-rule (#%bdnd-module-begin filelist tree prefix port)
   (#%module-begin
-   (let*-values (((och ich thd) (decompress-from-port)))
+   (let-values (((ich thd) (decompress-from-port port)))
      (make-directory* prefix)
      (parameterize ((current-directory prefix))
        (map (lambda (f) (let ((name (cadr f))
-                              (size (car f))
-                              (bytes-list (cddr f)))
+                              (size (car f)))
                           (collect-garbage 'incremental)
-                          (map (lambda (b) (async-channel-put och (open-input-bytes b))) bytes-list)
                           (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e))))
                             (make-parent-directory* name)
                             (call-with-output-file*
@@ -27,5 +25,4 @@
                                         ((null? l)
                                          (sync (handle-evt ich index)))
                                         (else (index l)))))))))
-            (list file ...)))
-     (async-channel-put och #f))))
+            filelist)))))
