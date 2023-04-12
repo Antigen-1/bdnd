@@ -49,13 +49,14 @@
   (test-case
       "codec"
     (define-values (in out) (make-pipe))
-    (define-values (ch ch1 _1) (compress-to-port out))
-    (define-values (ch2 _2) (decompress-from-port in))
-    (define bit-list '(0 1 1 0 1 0 1 1))
-    (async-channel-put ch bit-list)
-    (async-channel-put ch #f)
-    (check-eq? (sync (handle-evt ch1 (lambda (p) (close-output-port p) p))) out)
-    (check-equal? (sync ch2) bit-list))
+    (define-values (ch1 thd) (compress-to-port out))
+    (define-values (ch2 _) (decompress-from-port in))
+    (define bit-list '(0 1 1 0 1 0 1 1 1))
+    (async-channel-put ch1 bit-list)
+    (async-channel-put ch1 #f)
+    (sync (handle-evt thd (lambda (_) (close-output-port out))))
+    (check-equal? (sync ch2) '(0 1 1 0 1 0 1 1))
+    (check-equal? (sync ch2) '(1 0 0 0 0 0 0 0)))
 
   (require "huffman.rkt")
   
@@ -94,9 +95,7 @@
         #:exists 'truncate/replace
         temp
         (lambda (out)
-          (define-values (in-end out-end) (make-pipe))
-          (define-values (och ich _) (compress-to-port out-end))
-          (define thd (thread (lambda () (copy-port in-end out))))
+          (define-values (och thd) (compress-to-port out))
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))
@@ -114,7 +113,6 @@
                             r))))
                       (else r)))))
           (async-channel-put och #f)
-          (sync (handle-evt ich close-output-port))
           (sync thd)
           (reverse filelist))))
     (call-with-input-file*
