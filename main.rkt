@@ -64,10 +64,11 @@
       "huffman"
     (define test-file (build-path test-dir "huffman"))
     (define tree (make-huffman-tree test-file))
+    (define ctree (cleanse-huffman-tree-2 tree))
     (check-equal? (consult-huffman-tree 97 tree) '(0))
     (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
-    (check-equal? (index-huffman-tree tree (consult-huffman-tree 99 tree)) '(99))
-    (check-equal? (index-huffman-tree tree (consult-huffman-tree 100 tree)) '(100))))
+    (check-equal? (index-huffman-tree ctree (consult-huffman-tree 99 tree)) '(99))
+    (check-equal? (index-huffman-tree ctree (consult-huffman-tree 100 tree)) '(100))))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
@@ -123,6 +124,6 @@
           (lambda (fout)
             (displayln "#lang bdnd" fout)
             (s-exp->fasl fl fout)
-            (s-exp->fasl ht fout)
+            (s-exp->fasl (cleanse-huffman-tree-2 ht) fout)
             (s-exp->fasl (current-prefix) fout)
             (copy-port in fout)))))))

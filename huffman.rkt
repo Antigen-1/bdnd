@@ -96,11 +96,13 @@
          (consult-huffman-tree b (cadr t) (cons 0 r)))
         (else (consult-huffman-tree b (caddr t) (cons 1 r)))))
 
-(define/caching (index-huffman-tree tree list)
-  (let loop ((t tree) (l list))
-    (cond ((byte? t) (cons t l))
-          ((null? l) (cons t null))
-          (else (loop (if (zero? (car l)) (cadr t) (caddr t))
-                      (cdr l))))))
+(define (cleanse-huffman-tree-2 tree)
+  (cond ((byte? tree) tree)
+        (else (list (cleanse-huffman-tree-2 (cadr tree)) (cleanse-huffman-tree-2 (caddr tree))))))
 
-(provide make-huffman-tree consult-huffman-tree index-huffman-tree)
+(define/caching (index-huffman-tree tree list)
+  (cond ((or (byte? tree) (null? list)) (cons tree list))
+        (else (index-huffman-tree (if (zero? (car list)) (cadr tree) (caddr tree))
+                                  (cdr list)))))
+
+(provide make-huffman-tree consult-huffman-tree cleanse-huffman-tree-2 index-huffman-tree)
