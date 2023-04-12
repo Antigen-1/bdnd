@@ -40,7 +40,7 @@
            (list 'quote (fasl->s-exp port))
            (list 'quote (fasl->s-exp port))
            (list 'quote (fasl->s-exp port))
-           port)))
+           (list 'quote port))))
 
   (provide read-syntax))
 
@@ -68,7 +68,7 @@
                        (list 'quote (list b1 b2))
                        (list 'quote b3)
                        (list 'quote b4)
-                       i)
+                       (list 'quote i))
                  (and (bytes=? b1 bytes1)
                       (bytes=? b2 bytes2)
                       (bytes=? b3 bytes3)

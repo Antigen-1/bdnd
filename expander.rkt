@@ -10,7 +10,7 @@
        (map (lambda (f) (let ((name (cadr f))
                               (size (car f)))
                           (collect-garbage 'incremental)
-                          (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-file name) (raise e))))
+                          (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f name) (raise e))))
                             (make-parent-directory* name)
                             (call-with-output-file*
                               name
