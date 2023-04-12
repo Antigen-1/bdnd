@@ -30,12 +30,12 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
-  (require racket/fasl "interpret.rkt")
+  (require racket/fasl racket/syntax "interpret.rkt")
   
   (define (read-syntax src port)
     (read-line port)
     (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port)
-    (datum->syntax #f (list 'module (gensym 'bdnd) 'racket/base)))
+    (datum->syntax #f (list 'module (generate-temporary 'bdnd) 'racket/base)))
 
   (provide read-syntax))
 
@@ -112,7 +112,7 @@
                                (add1 s))
                              (path->string f))
                             r))))
-                      (else r)))))
+                      (else (reverse r))))))
           (async-channel-put och #f)
           (sync (handle-evt ich close-output-port))
           (sync thd)
