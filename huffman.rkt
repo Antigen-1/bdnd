@@ -102,7 +102,7 @@
 
 (define/caching (index-huffman-tree tree list)
   (cond ((or (byte? tree) (null? list)) (cons tree list))
-        (else (index-huffman-tree (if (zero? (car list)) (cadr tree) (caddr tree))
+        (else (index-huffman-tree (if (zero? (car list)) (car tree) (cadr tree))
                                   (cdr list)))))
 
 (provide make-huffman-tree consult-huffman-tree cleanse-huffman-tree-2 index-huffman-tree)
