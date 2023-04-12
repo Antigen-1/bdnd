@@ -30,17 +30,12 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
-  (require racket/fasl)
+  (require racket/fasl "interpret.rkt")
   
   (define (read-syntax src port)
     (read-line port)
-    (datum->syntax
-     #f
-     (list 'module (gensym 'bdnd) 'bdnd/expander
-           (list 'quote (fasl->s-exp port))
-           (list 'quote (fasl->s-exp port))
-           (list 'quote (fasl->s-exp port))
-           (list 'quote port))))
+    (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port)
+    (datum->syntax #f (list 'module (gensym 'bdnd) 'racket/base)))
 
   (provide read-syntax))
 
@@ -49,31 +44,7 @@
   ;; or with `raco test`. The code here does not run when this file is
   ;; required by another module.
 
-  (require racket/async-channel racket/port "codec.rkt" racket/random (submod ".." reader) racket/fasl)
-
-  (test-case
-      "reader"
-    (define bytes1 (crypto-random-bytes 16))
-    (define bytes2 (crypto-random-bytes 32))
-    (define bytes3 (crypto-random-bytes 64))
-    (define bytes4 (crypto-random-bytes 128))
-    (define bytes5 (crypto-random-bytes 256))
-    (define-values (in out) (make-pipe))
-    (newline out)
-    (map (lambda (b) (s-exp->fasl b out)) (list (list bytes1 bytes2) bytes3 bytes4))
-    (write-bytes bytes5 out)
-    (close-output-port out)
-    (check-match (syntax->datum (read-syntax #f in))
-                 (list 'module _ 'bdnd/expander
-                       (list 'quote (list b1 b2))
-                       (list 'quote b3)
-                       (list 'quote b4)
-                       (list 'quote i))
-                 (and (bytes=? b1 bytes1)
-                      (bytes=? b2 bytes2)
-                      (bytes=? b3 bytes3)
-                      (bytes=? b4 bytes4)
-                      (bytes=? (port->bytes i) bytes5))))
+  (require racket/async-channel "codec.rkt")
   
   (test-case
       "codec"
