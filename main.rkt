@@ -112,11 +112,11 @@
                                (add1 s))
                              (path->string f))
                             r))))
-                      (else (reverse r))))))
+                      (else r)))))
           (async-channel-put och #f)
           (sync (handle-evt ich close-output-port))
           (sync thd)
-          filelist)))
+          (reverse filelist))))
     (call-with-input-file*
       temp
       (lambda (in)
