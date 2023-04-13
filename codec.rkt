@@ -29,10 +29,9 @@
 (define (decompress-from-port port (buffer 30000))
   (define out-channel (make-async-channel buffer))
 
-  (define/caching (byte->bit-list b)
-    (let loop ((b b) (r null) (n 8))
-      (cond ((zero? n) (reverse r))
-            (else (loop (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r) (sub1 n))))))
+  (define/caching (byte->bit-list b (r null) (n 8))
+    (cond ((zero? n) (reverse r))
+          (else (byte->bit-list (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r) (sub1 n)))))
   
   (define thd
     (thread
