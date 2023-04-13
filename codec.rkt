@@ -11,18 +11,18 @@
   (define thd
     (thread
      (lambda ()
-       (let loop ((rest null))
+       (let loop ((rest null) (len 0))
          (sync (handle-evt
                 in-channel
                 (lambda (l)
-                  (cond ((not l) (cond ((not (null? rest)) (write-byte (bit-list->byte rest) port))))
+                  (cond ((not l) (cond ((not (zero? len)) (write-byte (bit-list->byte rest) port))))
                         (else
-                         (let work ((ls (append rest l)))
-                           (if (>= (length ls) 8)
+                         (let work ((ls (append rest l)) (ln (+ len (length l))))
+                           (if (>= ln 8)
                                (let-values (((former latter) (split-at ls 8)))
                                  (write-byte (bit-list->byte former) port)
-                                 (work latter))
-                               (loop ls))))))))))))
+                                 (work latter (- ln 8)))
+                               (loop ls ln))))))))))))
                      
   (values in-channel thd))
 
