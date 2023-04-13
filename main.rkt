@@ -81,8 +81,10 @@
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
+  (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
 
   (command-line #:program (short-program+command-name)
+                #:once-any (("-b" "--buffer") b "specify the size of the channel" (current-buffer-size (string->number b)))
                 #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
                 #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
@@ -96,7 +98,8 @@
         #:exists 'truncate/replace
         temp
         (lambda (out)
-          (define-values (och thd) (compress-to-port out))
+          (define-values (och thd) (cond ((current-buffer-size) => (lambda (b) (compress-to-port out b)))
+                                         (else (compress-to-port out))))
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))

@@ -1,8 +1,8 @@
 #lang racket/base
 (require racket/async-channel racket/list sugar/cache)
 
-(define (compress-to-port port)
-  (define in-channel (make-async-channel))
+(define (compress-to-port port (buffer 30000))
+  (define in-channel (make-async-channel buffer))
 
   (define/caching (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
@@ -26,8 +26,8 @@
                      
   (values in-channel thd))
 
-(define (decompress-from-port port)
-  (define out-channel (make-async-channel))
+(define (decompress-from-port port (buffer 30000))
+  (define out-channel (make-async-channel buffer))
 
   (define/caching (byte->bit-list b)
     (let loop ((b b) (r null) (n 8))

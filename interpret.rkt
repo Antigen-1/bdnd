@@ -3,7 +3,8 @@
 (provide bdnd-interpret)
 
 (define (bdnd-interpret filelist tree prefix port)
-  (let-values (((ich thd) (decompress-from-port port)))
+  (let-values (((ich thd) (cond ((let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r))) => (lambda (n) (decompress-from-port port n)))
+                                (else (decompress-from-port port)))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
       (foldl (lambda (f i) (let ((name (cadr f))
