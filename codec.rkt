@@ -26,8 +26,8 @@
                      
   (values in-channel thd))
 
-(define (decompress-from-port port (buffer 100))
-  (define out-channel (make-async-channel (integer-sqrt buffer)))
+(define (decompress-from-port port (buffer 30000))
+  (define out-channel (make-async-channel buffer))
 
   (define/caching (byte->bit-list b (r null) (n 8))
     (cond ((zero? n) (reverse r))
@@ -38,11 +38,8 @@
   (define thd
     (thread
      (lambda ()
-       (define mb (make-bytes buffer))
-       (for ((n (in-port (lambda (p) (read-bytes-avail! mb p)) port)))
-         (let loop ((i 0) (r null))
-           (cond ((= i n) (async-channel-put out-channel r))
-                 (else (loop (add1 i) (append r (byte->bit-list (bytes-ref mb i)))))))))))
+       (for ((b (in-port read-byte port)))
+         (async-channel-put out-channel (byte->bit-list b))))))
 
   (values out-channel thd))
 
