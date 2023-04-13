@@ -26,8 +26,8 @@
                      
   (values in-channel thd))
 
-(define (decompress-from-port port (buffer 30000))
-  (define out-channel (make-async-channel))
+(define (decompress-from-port port (buffer 100))
+  (define out-channel (make-async-channel (integer-sqrt buffer)))
 
   (define/caching (byte->bit-list b (r null) (n 8))
     (cond ((zero? n) (reverse r))
