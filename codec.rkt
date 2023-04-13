@@ -31,7 +31,7 @@
 
   (define/caching (byte->bit-list b (r null) (n 8))
     (cond ((zero? n) (reverse r))
-          (else (byte->bit-list (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r) (sub1 n)))))
+          (else (byte->bit-list (arithmetic-shift b -1) (cons (bitwise-and b 1) r) (sub1 n)))))
   
   (define thd
     (thread
