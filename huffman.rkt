@@ -29,8 +29,8 @@
 
 (require racket/contract)
 
-(define node/c (or/c (list/c exact-positive-integer? set? node/c node/c)
-                     (list/c exact-positive-integer? byte?)))
+(define leaf/c (list/c exact-positive-integer? byte?))
+(define node/c (list/c exact-positive-integer? set? (or/c node/c leaf/c) (or/c node/c leaf/c)))
 
 (define (insert-node o l (r null))
   (cond ((null? l) (reverse (cons o r)))
@@ -80,11 +80,9 @@
                                  min max))))
 
 (define/contract (ordered-list->huffman-tree l)
-  (-> (non-empty-listof node/c) node/c); at least one node is required to call this function
+  (-> (non-empty-listof (or/c node/c leaf/c)) node/c); at least one node is required to call this function and the value returned by this function must not be a leaf
   (cond ((null? (cdr l)) (car l))
         (else (ordered-list->huffman-tree (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l))))))
-
-(define new-node/c (list/c set? (or/c new-node/c byte?) (or/c new-node/c byte?)))
 
 (define (cleanse-huffman-tree tree)
   (cond ((node-is-leaf? tree) (node-content tree))
@@ -103,8 +101,6 @@
          (reverse (cons 1 r)))
         (else (consult-huffman-tree b (caddr t) (cons 1 r)))))
 
-(define new-node-2/c (list/c (or/c byte? new-node-2/c) (or/c byte? new-node-2/c)))
-
 (define (cleanse-huffman-tree-2 tree)
   (cond ((byte? tree) tree)
         (else (list (cleanse-huffman-tree-2 (cadr tree)) (cleanse-huffman-tree-2 (caddr tree))))))
@@ -114,7 +110,4 @@
         (else (index-huffman-tree (if (zero? (car list)) (car tree) (cadr tree))
                                   (cdr list)))))
 
-(provide consult-huffman-tree index-huffman-tree
-         (contract-out ; check the result, in order to ensure that `consult-huffman-tree` and `index-huffman-tree` will not fail
-          (make-huffman-tree (-> path-string? new-node/c))
-          (cleanse-huffman-tree-2 (-> new-node/c new-node-2/c))))
+(provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree-2)
