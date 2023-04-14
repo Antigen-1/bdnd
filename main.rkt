@@ -33,10 +33,18 @@
   (require racket/fasl racket/syntax "interpret.rkt")
   
   (define (read-syntax src port)
-    (read-line port)
-    (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port)
-    (datum->syntax #f (list 'module (generate-temporary 'bdnd) 'racket/base)))
-
+    (cond ((port-try-file-lock? port 'shared)
+           (dynamic-wind
+             void
+             (lambda ()
+               (read-line port)
+               (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port)
+               (datum->syntax #f (list 'module (generate-temporary 'bdnd) 'racket/base)))
+             (lambda () (port-file-unlock port))))
+          (else (raise (make-exn:fail:filesystem
+                        "fail to acquire the file lock when reading the source file"
+                        (current-continuation-marks))))))
+  
   (provide read-syntax))
 
 (module+ test
@@ -76,7 +84,7 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" racket/async-channel racket/port racket/fasl racket/file)
+  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" "lock.rkt" racket/async-channel racket/port racket/fasl racket/file)
   
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
@@ -94,7 +102,7 @@
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define temp (make-temporary-file))
     (define fl
-      (call-with-output-file*
+      (call-with-output-file/lock
         #:exists 'truncate/replace
         temp
         (lambda (out)
@@ -105,7 +113,7 @@
               (for/fold ((r null)) ((f (in-directory)))
                 (collect-garbage 'incremental)
                 (cond ((file-exists? f)
-                       (call-with-input-file*
+                       (call-with-input-file/lock
                          f
                          (lambda (in)
                            (cons
@@ -119,10 +127,10 @@
           (async-channel-put och #f)
           (sync thd)
           (reverse filelist))))
-    (call-with-input-file*
+    (call-with-input-file/lock
       temp
       (lambda (in)
-        (call-with-output-file*
+        (call-with-output-file/lock
           (current-output-file)
           (lambda (fout)
             (displayln "#lang bdnd" fout)

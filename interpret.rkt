@@ -1,5 +1,5 @@
 #lang racket/base
-(require "codec.rkt" "huffman.rkt" racket/file)
+(require "codec.rkt" "huffman.rkt" racket/file "lock.rkt")
 (provide bdnd-interpret)
 
 (define (bdnd-interpret filelist tree prefix port)
@@ -12,7 +12,7 @@
                              (collect-garbage 'incremental)
                              (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f name) (raise e))))
                                (make-parent-directory* name)
-                               (call-with-output-file*
+                               (call-with-output-file/lock
                                  name
                                  (lambda (out) 
                                    (let loop ((t tree) (l i) (s size))
