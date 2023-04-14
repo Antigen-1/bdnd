@@ -27,6 +27,11 @@
 (define right-node cadddr)
 (define node-is-leaf? (compose byte? node-content))
 
+(require racket/contract)
+
+(define node/c (or/c (list/c exact-positive-integer? set? node/c node/c)
+                     (list/c exact-positive-integer? byte?)))
+
 (define (insert-node o l (r null))
   (cond ((null? l) (reverse (cons o r)))
         ((> (node-frequency o) (node-frequency (car l))) (insert-node o (cdr l) (cons (car l) r)))
@@ -74,11 +79,12 @@
                                        (else (byte-set-union (node-content min) (node-content max))))
                                  min max))))
 
-(define (ordered-list->huffman-tree l)
-  (let loop ((l l))
-    (cond ((null? l) #f)
-          ((null? (cdr l)) (car l))
-          (else (loop (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l)))))))
+(define/contract (ordered-list->huffman-tree l)
+  (-> (non-empty-listof node/c) node/c); at least one node is required to call this function
+  (cond ((null? (cdr l)) (car l))
+        (else (ordered-list->huffman-tree (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l))))))
+
+(define new-node/c (list/c set? (or/c new-node/c byte?) (or/c new-node/c byte?)))
 
 (define (cleanse-huffman-tree tree)
   (cond ((node-is-leaf? tree) (node-content tree))
@@ -90,11 +96,14 @@
 (require sugar/cache)
 
 (define/caching (consult-huffman-tree b t (r null))
-  (cond ((byte? t) (reverse r))
-        ((or (and (not (byte? (cadr t))) (byte-set-have? b (car (cadr t))))
-             (and (byte? (cadr t)) (= b (cadr t))))
-         (consult-huffman-tree b (cadr t) (cons 0 r)))
+  (cond ((and (not (byte? (cadr t))) (byte-set-have? b (car (cadr t)))) (consult-huffman-tree b (cadr t) (cons 0 r)))
+        ((and (byte? (cadr t)) (= b (cadr t)))
+         (reverse (cons 0 r)))
+        ((and (byte? (caddr t)) (= b (caddr t)))
+         (reverse (cons 1 r)))
         (else (consult-huffman-tree b (caddr t) (cons 1 r)))))
+
+(define new-node-2/c (list/c (or/c byte? new-node-2/c) (or/c byte? new-node-2/c)))
 
 (define (cleanse-huffman-tree-2 tree)
   (cond ((byte? tree) tree)
@@ -105,4 +114,7 @@
         (else (index-huffman-tree (if (zero? (car list)) (car tree) (cadr tree))
                                   (cdr list)))))
 
-(provide make-huffman-tree consult-huffman-tree cleanse-huffman-tree-2 index-huffman-tree)
+(provide consult-huffman-tree index-huffman-tree
+         (contract-out ; check the result, in order to ensure that `consult-huffman-tree` and `index-huffman-tree` will not fail
+          (make-huffman-tree (-> path-string? new-node/c))
+          (cleanse-huffman-tree-2 (-> new-node/c new-node-2/c))))
