@@ -29,8 +29,7 @@
 
 (require racket/contract)
 
-(define leaf/c (list/c exact-positive-integer? byte?))
-(define node/c (list/c exact-positive-integer? set? (or/c node/c leaf/c) (or/c node/c leaf/c)))
+(define node/c (list/c any/c set? any/c any/c))
 
 (define (insert-node o l (r null))
   (cond ((null? l) (reverse (cons o r)))
@@ -80,7 +79,7 @@
                                  min max))))
 
 (define/contract (ordered-list->huffman-tree l)
-  (-> (non-empty-listof (or/c node/c leaf/c)) node/c); at least one node is required to call this function and the value returned by this function must not be a leaf
+  (-> (non-empty-listof (or/c node/c node-is-leaf?)) node/c); at least one node is required to call this function and the value returned by this function must not be a leaf
   (cond ((null? (cdr l)) (car l))
         (else (ordered-list->huffman-tree (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l))))))
 
