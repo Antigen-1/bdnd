@@ -39,7 +39,7 @@
              (lambda ()
                (file-stream-buffer-mode port 'block)
                (read-line port)
-               (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port)
+               (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r))))
                (datum->syntax #f (list 'module (generate-temporary 'bdnd) 'racket/base)))
              (lambda () (port-file-unlock port))))
           (else (raise (make-exn:fail:filesystem

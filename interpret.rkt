@@ -2,9 +2,8 @@
 (require "codec.rkt" "huffman.rkt" racket/file "lock.rkt")
 (provide bdnd-interpret)
 
-(define (bdnd-interpret filelist tree prefix port)
-  (let-values (((ich thd) (cond ((let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r))) => (lambda (n) (decompress-from-port port n)))
-                                (else (decompress-from-port port)))))
+(define (bdnd-interpret filelist tree prefix port (buffer #f))
+  (let-values (((ich thd) (if buffer (decompress-from-port port buffer) (decompress-from-port port))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
       (foldl (lambda (f i) (let ((name (cadr f))
