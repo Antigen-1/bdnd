@@ -37,6 +37,7 @@
            (dynamic-wind
              void
              (lambda ()
+               (file-stream-buffer-mode port 'block)
                (read-line port)
                (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port)
                (datum->syntax #f (list 'module (generate-temporary 'bdnd) 'racket/base)))
