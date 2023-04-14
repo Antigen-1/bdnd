@@ -3,6 +3,7 @@
 (provide bdnd-interpret)
 
 (define (bdnd-interpret filelist tree prefix port (buffer #f))
+  (file-stream-buffer-mode port 'block)
   (let-values (((ich thd) (if buffer (decompress-from-port port buffer) (decompress-from-port port))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
@@ -13,7 +14,8 @@
                                (make-parent-directory* name)
                                (call-with-output-file/lock
                                  name
-                                 (lambda (out) 
+                                 (lambda (out)
+                                   (file-stream-buffer-mode out 'block)
                                    (let loop ((t tree) (l i) (s size))
                                      (define (index l)
                                        (let ((r (index-huffman-tree t l)))

@@ -111,6 +111,7 @@
         #:exists 'truncate/replace
         temp
         (lambda (out)
+          (file-stream-buffer-mode out 'block)
           (define-values (och thd) (cond ((current-buffer-size) => (lambda (b) (compress-to-port out b)))
                                          (else (compress-to-port out))))
           (define filelist
@@ -121,6 +122,7 @@
                        (call-with-input-file/lock
                          f
                          (lambda (in)
+                           (file-stream-buffer-mode in 'block)
                            (cons
                             (list
                              (let loop ((s 0))
@@ -141,9 +143,11 @@
     (call-with-input-file/lock
       temp
       (lambda (in)
+        (file-stream-buffer-mode in 'block)
         (call-with-output-file/lock
           (current-output-file)
           (lambda (fout)
+            (file-stream-buffer-mode fout 'block)
             (displayln "#lang bdnd" fout)
             (s-exp->fasl fl fout)
             (s-exp->fasl (cleanse-huffman-tree-2 ht) fout)
