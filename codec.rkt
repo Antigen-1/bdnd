@@ -1,5 +1,5 @@
 #lang racket/base
-(require racket/async-channel racket/list sugar/cache)
+(require racket/async-channel racket/list sugar/cache racket/port)
 
 (define (compress-to-port port (buffer 30000))
   (define in-channel (make-async-channel buffer))
@@ -38,8 +38,17 @@
   (define thd
     (thread
      (lambda ()
-       (for ((b (in-port read-byte port)))
-         (async-channel-put out-channel (byte->bit-list b))))))
+       (define b (make-bytes (integer-sqrt buffer)))
+       (let loop ()
+         (sync (handle-evt (read-bytes-avail!-evt b port)
+                           (lambda (n)
+                             (cond ((not (eof-object? n))
+                                    (let work ((i 0))
+                                      (cond ((= i n) (loop))
+                                            (else
+                                             (async-channel-put out-channel
+                                                                (byte->bit-list (bytes-ref b i)))
+                                             (work (add1 i))))))))))))))
 
   (values out-channel thd))
 

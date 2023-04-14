@@ -90,9 +90,12 @@
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
   (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
+  (define current-bytes-buffer-size (make-parameter 100))
 
   (command-line #:program (short-program+command-name)
-                #:once-any (("-b" "--buffer") b "specify the size of the channel" (current-buffer-size (string->number b)))
+                #:once-any (("-b" "--buffer") b "specify the size of the channel"
+                                              (current-buffer-size (string->number b))
+                                              (cond ((current-buffer-size) (current-bytes-buffer-size (integer-sqrt (current-buffer-size))))))
                 #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
                 #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
@@ -101,6 +104,7 @@
 
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define temp (make-temporary-file))
+    (define mbytes (make-bytes (current-bytes-buffer-size)))
     (define fl
       (call-with-output-file/lock
         #:exists 'truncate/replace
@@ -118,9 +122,15 @@
                          (lambda (in)
                            (cons
                             (list
-                             (for/fold ((s 0)) ((b (in-port read-byte in)))
-                               (async-channel-put och (consult-huffman-tree b ht))
-                               (add1 s))
+                             (let loop ((s 0))
+                               (sync (handle-evt (read-bytes-avail!-evt mbytes in)
+                                                 (lambda (n)
+                                                   (cond ((eof-object? n) s)
+                                                         (else
+                                                          (let work ((i 0))
+                                                            (cond ((= i n) (loop (+ s n)))
+                                                                  (else (async-channel-put och (consult-huffman-tree (bytes-ref mbytes i) ht))
+                                                                        (work (add1 i)))))))))))
                              (path->string f))
                             r))))
                       (else r)))))
