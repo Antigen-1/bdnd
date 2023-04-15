@@ -53,6 +53,25 @@
   ;; or with `raco test`. The code here does not run when this file is
   ;; required by another module.
 
+  (require "buffer.rkt" racket/random racket/class)
+
+  (test-case
+      "buffer"
+    (define in-buffer (new buffer% (size 1000)))
+    (define out-buffer (new buffer% (size 1000)))
+    (define-values (in out) (make-pipe))
+    (send in-buffer set-input in)
+    (send out-buffer set-output out)
+    (define bytes (crypto-random-bytes 1000000))
+    (for ((b (in-bytes bytes)))
+      (send out-buffer commit b))
+    (send out-buffer flush)
+    (close-output-port out)
+    (let work ((b #""))
+      (define v (send in-buffer read))
+      (cond ((eof-object? v) (check-equal? bytes b))
+            (else (work (bytes-append b v))))))
+
   (require racket/async-channel "codec.rkt")
   
   (test-case
