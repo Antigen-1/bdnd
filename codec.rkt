@@ -5,7 +5,7 @@
   (define in-channel (make-async-channel size))
   (define buffer (new buffer% (size (integer-sqrt size))))
 
-  (send buffer set-ouput port)
+  (send buffer set-output port)
   
   (define/caching (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
