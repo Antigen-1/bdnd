@@ -77,8 +77,8 @@
   (test-case
       "codec"
     (define-values (in out) (make-pipe))
-    (define-values (ch1 thd) (compress-to-port out))
-    (define-values (ch2 _) (decompress-from-port in))
+    (define-values (ch1 thd) (compress-to-port out 10))
+    (define-values (ch2 _) (decompress-from-port in 10))
     (define bit-list '(0 1 1 0 1 0 1 1 1))
     (async-channel-put ch1 bit-list)
     (async-channel-put ch1 #f)
