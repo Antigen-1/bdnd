@@ -119,10 +119,9 @@
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
   
   (define ht (make-huffman-tree (current-handling-directory)))
+  (define temp (make-temporary-file))
 
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
-    (define temp (make-temporary-file))
-    (define buffer (new in-buffer% (size (if (current-buffer-size) (integer-sqrt (current-buffer-size)) 1000))))
     (define fl
       (call-with-output-file/lock
         #:exists 'truncate/replace
@@ -130,6 +129,7 @@
         (lambda (out)
           (file-stream-buffer-mode out 'block)
           (define-values (och thd) (compress-to-port out (cond ((current-buffer-size)) (else 1000000))))
+          (define buffer (new in-buffer% (size (if (current-buffer-size) (integer-sqrt (current-buffer-size)) 1000))))
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))
