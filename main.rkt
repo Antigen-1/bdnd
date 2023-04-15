@@ -85,18 +85,16 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" "lock.rkt" racket/async-channel racket/port racket/fasl racket/file)
+  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" "lock.rkt" "buffer.rkt" racket/class racket/async-channel racket/port racket/fasl racket/file)
   
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
   (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
-  (define current-bytes-buffer-size (make-parameter 100))
 
   (command-line #:program (short-program+command-name)
-                #:once-any (("-b" "--buffer") b "specify the size of the channel"
-                                              (current-buffer-size (string->number b))
-                                              (cond ((current-buffer-size) (current-bytes-buffer-size (integer-sqrt (current-buffer-size))))))
+                #:once-any (("-b" "--buffer") b "specify the size of the buffer"
+                                              (cond ((string->number b) => current-buffer-size)))
                 #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
                 #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
@@ -105,15 +103,14 @@
 
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define temp (make-temporary-file))
-    (define mbytes (make-bytes (current-bytes-buffer-size)))
+    (define buffer (new buffer% (size (if (current-buffer-size) (integer-sqrt (current-buffer-size)) 1000))))
     (define fl
       (call-with-output-file/lock
         #:exists 'truncate/replace
         temp
         (lambda (out)
           (file-stream-buffer-mode out 'block)
-          (define-values (och thd) (cond ((current-buffer-size) => (lambda (b) (compress-to-port out b)))
-                                         (else (compress-to-port out))))
+          (define-values (och thd) (compress-to-port out (cond ((current-buffer-size)) (else 1000000))))
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))
@@ -123,17 +120,18 @@
                          f
                          (lambda (in)
                            (file-stream-buffer-mode in 'block)
+                           (send buffer set-input in)
                            (cons
                             (list
                              (let loop ((s 0))
-                               (sync (handle-evt (read-bytes-avail!-evt mbytes in)
-                                                 (lambda (n)
-                                                   (cond ((eof-object? n) s)
-                                                         (else
-                                                          (let work ((i 0))
-                                                            (cond ((= i n) (loop (+ s n)))
-                                                                  (else (async-channel-put och (consult-huffman-tree (bytes-ref mbytes i) ht))
-                                                                        (work (add1 i)))))))))))
+                               (send buffer read
+                                     (lambda (n b)
+                                       (cond ((eof-object? n) s)
+                                             (else
+                                              (let work ((i 0))
+                                                (cond ((= i n) (loop (+ s n)))
+                                                      (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) ht))
+                                                            (work (add1 i))))))))))
                              (path->string f))
                             r))))
                       (else r)))))

@@ -1,9 +1,12 @@
 #lang racket/base
-(require racket/async-channel racket/list sugar/cache racket/port)
+(require racket/async-channel racket/list sugar/cache "buffer.rkt" racket/class)
 
-(define (compress-to-port port (buffer 30000))
-  (define in-channel (make-async-channel buffer))
+(define (compress-to-port port size)
+  (define in-channel (make-async-channel size))
+  (define buffer (new buffer% (size (integer-sqrt size))))
 
+  (send buffer set-ouput port)
+  
   (define/caching (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
           (else (bit-list->byte (cdr l) (* 2 i) (+ r (* (car l) i))))))
@@ -15,20 +18,24 @@
          (sync (handle-evt
                 in-channel
                 (lambda (l)
-                  (cond ((not l) (cond ((not (zero? len)) (write-byte (bit-list->byte rest) port))))
+                  (cond ((not l) (cond ((not (zero? len)) (send buffer commit (bit-list->byte rest))))
+                                 (send buffer flush))
                         (else
                          (let work ((ls (append rest l)) (ln (+ len (length l))))
                            (if (>= ln 8)
                                (let-values (((former latter) (split-at ls 8)))
-                                 (write-byte (bit-list->byte former) port)
+                                 (send buffer commit (bit-list->byte former))
                                  (work latter (- ln 8)))
                                (loop ls ln))))))))))))
                      
   (values in-channel thd))
 
-(define (decompress-from-port port (buffer 30000))
-  (define out-channel (make-async-channel buffer))
+(define (decompress-from-port port size)
+  (define out-channel (make-async-channel size))
+  (define buffer (new buffer% (size (integer-sqrt size))))
 
+  (send buffer set-input port)
+  
   (define/caching (byte->bit-list b (r null) (n 8))
     (cond ((zero? n) (reverse r))
           (else
@@ -38,17 +45,16 @@
   (define thd
     (thread
      (lambda ()
-       (define b (make-bytes (integer-sqrt buffer)))
        (let loop ()
-         (sync (handle-evt (read-bytes-avail!-evt b port)
-                           (lambda (n)
-                             (cond ((not (eof-object? n))
-                                    (let work ((i 0))
-                                      (cond ((= i n) (loop))
-                                            (else
-                                             (async-channel-put out-channel
-                                                                (byte->bit-list (bytes-ref b i)))
-                                             (work (add1 i))))))))))))))
+         (send buffer read
+               (lambda (n b)
+                 (cond ((not (eof-object? n))
+                        (let work ((i 0))
+                          (cond ((= i n) (loop))
+                                (else
+                                 (async-channel-put out-channel
+                                                    (byte->bit-list (bytes-ref b i)))
+                                 (work (add1 i)))))))))))))
 
   (values out-channel thd))
 
