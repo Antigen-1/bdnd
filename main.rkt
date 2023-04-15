@@ -57,8 +57,8 @@
 
   (test-case
       "buffer"
-    (define in-buffer (new buffer% (size 1000)))
-    (define out-buffer (new buffer% (size 1000)))
+    (define in-buffer (new in-buffer% (size 1000)))
+    (define out-buffer (new out-buffer% (size 1000)))
     (define-values (in out) (make-pipe))
     (send in-buffer set-input in)
     (send out-buffer set-output out)
@@ -122,7 +122,7 @@
 
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define temp (make-temporary-file))
-    (define buffer (new buffer% (size (if (current-buffer-size) (integer-sqrt (current-buffer-size)) 1000))))
+    (define buffer (new in-buffer% (size (if (current-buffer-size) (integer-sqrt (current-buffer-size)) 1000))))
     (define fl
       (call-with-output-file/lock
         #:exists 'truncate/replace

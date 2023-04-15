@@ -3,7 +3,7 @@
 
 (define (compress-to-port port size)
   (define in-channel (make-async-channel size))
-  (define buffer (new buffer% (size (integer-sqrt size))))
+  (define buffer (new out-buffer% (size (integer-sqrt size))))
 
   (send buffer set-output port)
   
@@ -32,7 +32,7 @@
 
 (define (decompress-from-port port size)
   (define out-channel (make-async-channel size))
-  (define buffer (new buffer% (size (integer-sqrt size))))
+  (define buffer (new in-buffer% (size (integer-sqrt size))))
 
   (send buffer set-input port)
   
