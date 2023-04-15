@@ -5,7 +5,7 @@
 (define (bdnd-interpret filelist tree prefix port size)
   (file-stream-buffer-mode port 'block)
   (let-values (((ich thd) (decompress-from-port port (cond (size) (else 1000000))))
-               ((buffer) (new out-buffer% (size (cond (size => integer-sqrt) (else 1000))))))
+               ((buffer) (new out-buffer% (size (cond (size) (else 1000000))))))
     (make-directory* prefix)
     (parameterize ((current-directory prefix))
       (foldl (lambda (f i) (let ((name (cadr f))

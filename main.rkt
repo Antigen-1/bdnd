@@ -129,7 +129,7 @@
         (lambda (out)
           (file-stream-buffer-mode out 'block)
           (define-values (och thd) (compress-to-port out (cond ((current-buffer-size)) (else 1000000))))
-          (define buffer (new in-buffer% (size (if (current-buffer-size) (integer-sqrt (current-buffer-size)) 1000))))
+          (define buffer (new in-buffer% (size (cond ((current-buffer-size)) (else 1000000)))))
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))
