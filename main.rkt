@@ -95,8 +95,8 @@
     (define ctree (cleanse-huffman-tree-2 tree))
     (check-equal? (consult-huffman-tree 97 tree) '(0))
     (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
-    (check-equal? (index-huffman-tree ctree (consult-huffman-tree 99 tree)) '(99))
-    (check-equal? (index-huffman-tree ctree (consult-huffman-tree 100 tree)) '(100))))
+    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 99 tree)) 99)
+    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 100 tree)) 100)))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
