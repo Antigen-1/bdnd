@@ -111,10 +111,13 @@
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
   (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
+  (define current-verbose-mode (make-parameter #f))
 
   (command-line #:program (short-program+command-name)
                 #:once-any (("-b" "--buffer") b "specify the size of the buffer"
                                               (cond ((string->number b) => current-buffer-size)))
+                #:once-any (("-v" "--verbose") "increase verbosity"
+                                               (current-verbose-mode #t))
                 #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
                 #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
@@ -122,8 +125,13 @@
   (define ht (make-huffman-tree (current-handling-directory)))
   (define ct (cleanse-huffman-tree ht))
   (define tb (huffman-tree->hash-table ht))
+  
+  (define prompt (if (current-verbose-mode) displayln void))
+  
   (define temp (make-temporary-file))
 
+  (prompt (format "temporary file:~a" temp))
+  
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define fl
       (call-with-output-file/lock
@@ -148,7 +156,7 @@
                              (let loop ((s 0))
                                (send buffer read
                                      (lambda (n b)
-                                       (cond ((eof-object? n) s)
+                                       (cond ((eof-object? n) (prompt (format "~a @ ~a" f s)) s)
                                              (else
                                               (let work ((i 0))
                                                 (cond ((= i n) (loop (+ s n)))
