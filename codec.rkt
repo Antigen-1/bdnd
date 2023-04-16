@@ -9,7 +9,8 @@
   
   (define/caching (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
-          (else (bit-list->byte (cdr l) (* 2 i) (+ r (* (car l) i))))))
+          ((zero? (car l)) (bit-list->byte (cdr l) (* 2 i) r))
+          (else (bit-list->byte (cdr l) (* 2 i) (+ r i)))))
   
   (define thd
     (thread
