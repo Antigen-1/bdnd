@@ -92,11 +92,12 @@
       "huffman"
     (define test-file (build-path test-dir "huffman"))
     (define tree (make-huffman-tree test-file))
-    (define ctree (cleanse-huffman-tree-2 tree))
-    (check-equal? (consult-huffman-tree 97 tree) '(0))
-    (check-equal? (consult-huffman-tree 98 tree) '(1 0 1))
-    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 99 tree)) 99)
-    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 100 tree)) 100)))
+    (define ctree (cleanse-huffman-tree tree))
+    (define table (huffman-tree->hash-table tree))
+    (check-equal? (consult-huffman-tree 97 table) '(0))
+    (check-equal? (consult-huffman-tree 98 table) '(1 0 1))
+    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 99 table)) 99)
+    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 100 table)) 100)))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
@@ -119,6 +120,8 @@
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
   
   (define ht (make-huffman-tree (current-handling-directory)))
+  (define ct (cleanse-huffman-tree ht))
+  (define tb (huffman-tree->hash-table ht))
   (define temp (make-temporary-file))
 
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
@@ -149,7 +152,7 @@
                                              (else
                                               (let work ((i 0))
                                                 (cond ((= i n) (loop (+ s n)))
-                                                      (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) ht))
+                                                      (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) tb))
                                                             (work (add1 i))))))))))
                              (path->string f))
                             r))))
@@ -167,6 +170,6 @@
             (file-stream-buffer-mode fout 'block)
             (displayln "#lang bdnd" fout)
             (s-exp->fasl fl fout)
-            (s-exp->fasl (cleanse-huffman-tree-2 ht) fout)
+            (s-exp->fasl ct fout)
             (s-exp->fasl (current-prefix) fout)
             (copy-port in fout)))))))

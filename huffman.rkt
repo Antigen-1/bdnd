@@ -32,7 +32,7 @@
 (require racket/contract)
 
 (define leaf/c (list/c any/c byte?))
-(define node/c (list/c any/c set? any/c any/c))
+(define node/c (list/c any/c not any/c any/c))
 
 (define (insert-node o l (r null))
   (cond ((null? l) (reverse (cons o r)))
@@ -45,40 +45,11 @@
           ((zero? (vector-ref fv i)) (loop (add1 i) r))
           (else (loop (add1 i) (insert-node (make-node (vector-ref fv i) i) r))))))
 
-(require set)
-
-(define-syntax-rule (configure-byte-set expr ...)
-  (parameterize ((current-key-accessor values)
-                 (current-comparation-handler >)
-                 (current-equation-handler =))
-    expr ...))
-
-(define (add-byte-to-set b s)
-  (configure-byte-set (add-element b s)))
-
-(define (byte-set-union s1 s2)
-  (configure-byte-set (set-union s1 s2)))
-
-(define (byte-set-have? b s)
-  (configure-byte-set (have-element? b s)))
-
 (define (merge-two-nodes n1 n2)
   (call-with-values (lambda () (if (> (node-frequency n1) (node-frequency n2)) (values n2 n1) (values n1 n2)))
                     (lambda (min max)
                       (make-node (+ (node-frequency min) (node-frequency max))
-                                 (cond ((and (node-is-leaf? min) (node-is-leaf? max))
-                                        (if (> (node-content min) (node-content max))
-                                            (make-set (node-content max)
-                                                      empty-set
-                                                      (make-set (node-content min) empty-set empty-set))
-                                            (make-set (node-content min)
-                                                      empty-set
-                                                      (make-set (node-content max) empty-set empty-set))))
-                                       ((and (node-is-leaf? min) (not (node-is-leaf? max)))
-                                        (add-byte-to-set (node-content min) (node-content max)))
-                                       ((and (node-is-leaf? max) (not (node-is-leaf? min)))
-                                        (add-byte-to-set (node-content max) (node-content min)))
-                                       (else (byte-set-union (node-content min) (node-content max))))
+                                 #f ;;generating the set is not necessary because in fact I'll never consult it
                                  min max))))
 
 (define/contract (ordered-list->huffman-tree l)
@@ -86,28 +57,25 @@
   (cond ((null? (cdr l)) (car l))
         (else (ordered-list->huffman-tree (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l))))))
 
+(define (make-huffman-tree path)
+  (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
+
+(define (huffman-tree->hash-table t)
+  (define h (make-hasheq))
+  (let loop ((t t) (r null))
+    (cond ((node-is-leaf? t) (hash-set! h (node-content t) (reverse r)))
+          (else (loop (left-node t) (cons 0 r))
+                (loop (right-node t) (cons 1 r)))))
+  h)
+
+(define (consult-huffman-tree b t)
+  (hash-ref t b))
+
 (define (cleanse-huffman-tree tree)
   (cond ((node-is-leaf? tree) (node-content tree))
-        (else (list (node-content tree) (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
-
-(define (make-huffman-tree path)
-  (cleanse-huffman-tree (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path)))))
-
-(require sugar/cache)
-
-(define/caching (consult-huffman-tree b t (r null))
-  (cond ((and (not (byte? (cadr t))) (byte-set-have? b (car (cadr t)))) (consult-huffman-tree b (cadr t) (cons 0 r)))
-        ((and (byte? (cadr t)) (= b (cadr t)))
-         (reverse (cons 0 r)))
-        ((and (byte? (caddr t)) (= b (caddr t)))
-         (reverse (cons 1 r)))
-        (else (consult-huffman-tree b (caddr t) (cons 1 r)))))
-
-(define (cleanse-huffman-tree-2 tree)
-  (cond ((byte? tree) tree)
-        (else (list (cleanse-huffman-tree-2 (cadr tree)) (cleanse-huffman-tree-2 (caddr tree))))))
+        (else (list (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
 
 (define (index-huffman-tree ins tree)
   (if (zero? ins) (car tree) (cadr tree)))
 
-(provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree-2)
+(provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table)
