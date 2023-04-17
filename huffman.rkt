@@ -72,7 +72,7 @@
                 (loop (add1 depth) (right-node tree)))))
   (~a
    (~r #:precision '(= 1)
-       (* 100 (/ (vector-ref vec 1) (vector-ref vec 0))))
+       (* 100 (/ (ceiling (vector-ref vec 1)) (vector-ref vec 0))))
    "%"))
 
 (define (huffman-tree->hash-table t)
