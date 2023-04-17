@@ -131,6 +131,7 @@
   (define temp (make-temporary-file))
 
   (prompt (format "temporary file:~a" temp))
+  (cond ((current-verbose-mode) (prompt (analyze-compression-ratio ht))))
   
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define fl

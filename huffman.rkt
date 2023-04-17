@@ -60,6 +60,20 @@
 (define (make-huffman-tree path)
   (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
 
+(require racket/format)
+
+(define (analyze-compression-ratio tree)
+  (define vec (vector 0 0))
+  (let loop ((depth 0) (tree tree))
+    (cond ((node-is-leaf? tree) (vector-set! vec 0 (+ (node-frequency tree) (vector-ref vec 0)))
+                                (vector-set! vec 1 (+ (/ (* (node-frequency tree) depth) 8)
+                                                      (vector-ref vec 1))))
+          (else (loop (add1 depth) (left-node tree))
+                (loop (add1 depth) (right-node tree)))))
+  (~r #:precision '(= 1)
+      (* 100 (/ (vector-ref vec 1) (vector-ref vec 0)))
+      "%"))
+
 (define (huffman-tree->hash-table t)
   (define h (make-hasheq))
   (let loop ((t t) (r null))
@@ -78,4 +92,5 @@
 (define (index-huffman-tree ins tree)
   (if (zero? ins) (car tree) (cadr tree)))
 
-(provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table)
+(provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
+         analyze-compression-ratio)
