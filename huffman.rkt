@@ -70,9 +70,10 @@
                                                       (vector-ref vec 1))))
           (else (loop (add1 depth) (left-node tree))
                 (loop (add1 depth) (right-node tree)))))
-  (~r #:precision '(= 1)
-      (* 100 (/ (vector-ref vec 1) (vector-ref vec 0)))
-      "%"))
+  (~a
+   (~r #:precision '(= 1)
+       (* 100 (/ (vector-ref vec 1) (vector-ref vec 0))))
+   "%"))
 
 (define (huffman-tree->hash-table t)
   (define h (make-hasheq))
