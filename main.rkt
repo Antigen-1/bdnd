@@ -145,7 +145,6 @@
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))
-                (collect-garbage 'incremental)
                 (cond ((file-exists? f)
                        (call-with-input-file/lock
                          f
@@ -159,6 +158,7 @@
                                      (lambda (n b)
                                        (cond ((eof-object? n) (prompt (format "~a @ ~a" f s)) s)
                                              (else
+                                              (collect-garbage 'incremental)
                                               (let work ((i 0))
                                                 (cond ((= i n) (loop (+ s n)))
                                                       (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) tb))

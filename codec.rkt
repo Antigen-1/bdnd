@@ -22,6 +22,7 @@
                   (cond ((not l) (cond ((not (zero? len)) (send buffer commit (bit-list->byte rest))))
                                  (send buffer flush))
                         (else
+                         (collect-garbage 'incremental)
                          (let work ((ls (append rest l)) (ln (+ len (length l))))
                            (if (>= ln 8)
                                (let-values (((former latter) (split-at ls 8)))
@@ -50,6 +51,7 @@
          (send buffer read
                (lambda (n b)
                  (cond ((not (eof-object? n))
+                        (collect-garbage 'incremental)
                         (let work ((i 0))
                           (cond ((= i n) (loop))
                                 (else

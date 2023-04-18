@@ -10,7 +10,6 @@
     (parameterize ((current-directory prefix))
       (foldl (lambda (f i) (let ((name (cadr f))
                                  (size (car f)))
-                             (collect-garbage 'incremental)
                              (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f name) (raise e))))
                                (make-parent-directory* name)
                                (call-with-output-file/lock
@@ -22,6 +21,7 @@
                                      (cond ((zero? s) (send buffer flush) l)
                                            ((null? l) (loop t (sync ich) s))
                                            (else
+                                            (collect-garbage 'incremental)
                                             (let ((r (index-huffman-tree (car l) t)))
                                               (cond ((byte? r)
                                                      (begin (send buffer commit r) (loop tree (cdr l) (sub1 s))))
