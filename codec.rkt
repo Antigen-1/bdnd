@@ -5,7 +5,7 @@
   (define in-channel (make-async-channel size))
   (define buffer (new out-buffer% (size size)))
 
-  (send buffer set-output port)
+  (send-generic buffer set-output port)
   
   (define/caching (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
@@ -19,14 +19,14 @@
          (sync (handle-evt
                 in-channel
                 (lambda (l)
-                  (cond ((not l) (cond ((not (zero? len)) (send buffer commit (bit-list->byte rest))))
-                                 (send buffer flush))
+                  (cond ((not l) (cond ((not (zero? len)) (send-generic buffer commit (bit-list->byte rest))))
+                                 (send-generic buffer flush))
                         (else
                          (collect-garbage 'incremental)
                          (let work ((ls (append rest l)) (ln (+ len (length l))))
                            (if (>= ln 8)
                                (let-values (((former latter) (split-at ls 8)))
-                                 (send buffer commit (bit-list->byte former))
+                                 (send-generic buffer commit (bit-list->byte former))
                                  (work latter (- ln 8)))
                                (loop ls ln))))))))))))
                      
@@ -36,7 +36,7 @@
   (define out-channel (make-async-channel size))
   (define buffer (new in-buffer% (size size)))
 
-  (send buffer set-input port)
+  (send-generic buffer set-input port)
   
   (define/caching (byte->bit-list b (r null) (n 8))
     (cond ((zero? n) (reverse r))
@@ -48,16 +48,16 @@
     (thread
      (lambda ()
        (let loop ()
-         (send buffer read
-               (lambda (n b)
-                 (cond ((not (eof-object? n))
-                        (collect-garbage 'incremental)
-                        (let work ((i 0))
-                          (cond ((= i n) (loop))
-                                (else
-                                 (async-channel-put out-channel
-                                                    (byte->bit-list (bytes-ref b i)))
-                                 (work (add1 i)))))))))))))
+         (send-generic buffer read
+                       (lambda (n b)
+                         (cond ((not (eof-object? n))
+                                (collect-garbage 'incremental)
+                                (let work ((i 0))
+                                  (cond ((= i n) (loop))
+                                        (else
+                                         (async-channel-put out-channel
+                                                            (byte->bit-list (bytes-ref b i)))
+                                         (work (add1 i)))))))))))))
 
   (values out-channel thd))
 

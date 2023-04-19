@@ -1,6 +1,6 @@
 #lang racket/base
 (require racket/class racket/port)
-(provide in-buffer% out-buffer%)
+(provide (all-defined-out))
 
 (define in-buffer%
   (class object%
@@ -44,3 +44,9 @@
         (set-box! counter 0)))
 
     (public set-output commit flush)))
+
+(define read (generic in-buffer% read))
+(define set-input (generic in-buffer% set-input))
+(define commit (generic out-buffer% commit))
+(define set-output (generic out-buffer% set-output))
+(define flush (generic out-buffer% flush))

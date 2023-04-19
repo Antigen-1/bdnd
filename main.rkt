@@ -60,15 +60,15 @@
     (define in-buffer (new in-buffer% (size 1000)))
     (define out-buffer (new out-buffer% (size 1000)))
     (define-values (in out) (make-pipe))
-    (send in-buffer set-input in)
-    (send out-buffer set-output out)
+    (send-generic in-buffer set-input in)
+    (send-generic out-buffer set-output out)
     (define bytes (crypto-random-bytes 1000000))
     (for ((b (in-bytes bytes)))
-      (send out-buffer commit b))
-    (send out-buffer flush)
+      (send-generic out-buffer commit b))
+    (send-generic out-buffer flush)
     (close-output-port out)
     (let work ((b #""))
-      (define v (send in-buffer read))
+      (define v (send-generic in-buffer read))
       (cond ((eof-object? v) (check-equal? bytes b))
             (else (work (bytes-append b v))))))
 
@@ -152,19 +152,19 @@
                          f
                          (lambda (in)
                            (file-stream-buffer-mode in 'block)
-                           (send buffer set-input in)
+                           (send-generic buffer set-input in)
                            (cons
                             (list
                              (let loop ((s 0))
-                               (send buffer read
-                                     (lambda (n b)
-                                       (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
-                                             (else
-                                              (collect-garbage 'incremental)
-                                              (let work ((i 0))
-                                                (cond ((= i n) (loop (+ s n)))
-                                                      (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) tb))
-                                                            (work (add1 i))))))))))
+                               (send-generic buffer read
+                                             (lambda (n b)
+                                               (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
+                                                     (else
+                                                      (collect-garbage 'incremental)
+                                                      (let work ((i 0))
+                                                        (cond ((= i n) (loop (+ s n)))
+                                                              (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) tb))
+                                                                    (work (add1 i))))))))))
                              (path->string f))
                             r))))
                       (else r)))))

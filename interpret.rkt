@@ -17,15 +17,15 @@
                                  name
                                  (lambda (out)
                                    (file-stream-buffer-mode out 'block)
-                                   (send buffer set-output out)
+                                   (send-generic buffer set-output out)
                                    (let loop ((t tree) (l i) (s size))
-                                     (cond ((zero? s) (send buffer flush) l)
+                                     (cond ((zero? s) (send-generic buffer flush) l)
                                            ((null? l) (loop t (sync ich) s))
                                            (else
                                             (collect-garbage 'incremental)
                                             (let ((r (index-huffman-tree (car l) t)))
                                               (cond ((byte? r)
-                                                     (begin (send buffer commit r) (loop tree (cdr l) (sub1 s))))
+                                                     (begin (send-generic buffer commit r) (loop tree (cdr l) (sub1 s))))
                                                     (else (loop r (cdr l) s))))))))))))
              null
              filelist))
