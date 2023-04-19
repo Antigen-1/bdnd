@@ -10,6 +10,7 @@
     (parameterize ((current-directory prefix))
       (foldl (lambda (f i) (let ((name (cadr f))
                                  (size (car f)))
+                             (collect-garbage 'incremental)
                              (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f name) (raise e))))
                                (make-parent-directory* name)
                                (call-with-output-file/lock

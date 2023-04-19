@@ -146,6 +146,8 @@
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r null)) ((f (in-directory)))
                 (cond ((file-exists? f)
+                       (collect-garbage 'incremental)
+                       (define start (current-milliseconds))
                        (call-with-input-file/lock
                          f
                          (lambda (in)
@@ -156,7 +158,7 @@
                              (let loop ((s 0))
                                (send buffer read
                                      (lambda (n b)
-                                       (cond ((eof-object? n) (prompt (format "~a @ ~a" f s)) s)
+                                       (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
                                              (else
                                               (collect-garbage 'incremental)
                                               (let work ((i 0))
