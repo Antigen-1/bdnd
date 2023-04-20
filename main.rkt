@@ -112,12 +112,15 @@
   (define current-handling-directory (make-parameter #f))
   (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
   (define current-verbose-mode (make-parameter #f))
+  (define current-log-handler (make-parameter displayln))
 
   (command-line #:program (short-program+command-name)
                 #:once-any (("-b" "--buffer") b "specify the size of the buffer"
                                               (cond ((string->number b) => current-buffer-size)))
                 #:once-any (("-v" "--verbose") "increase verbosity"
                                                (current-verbose-mode #t))
+                #:once-any (("-l" "--log") "report information at the `info` level with the topic `bdnd`"
+                                           (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
                 #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
                 #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
@@ -128,8 +131,11 @@
   
   (define temp (make-temporary-file))
 
-  (cond ((current-verbose-mode) (displayln (format "compression ratio:~a" (analyze-compression-ratio ht)))
-                                (displayln (format "temporary file:~a" temp))))
+  (define-syntax-rule (prompt str ...)
+    (cond ((current-verbose-mode) ((current-log-handler) str) ...)))
+
+  (prompt (format "compression ratio:~a" (analyze-compression-ratio ht))
+          (format "temporary file:~a" temp))
   
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define fl
@@ -156,7 +162,7 @@
                              (let loop ((s 0))
                                (send-generic buffer read
                                              (lambda (n b)
-                                               (cond ((eof-object? n) (cond ((current-verbose-mode) (displayln (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))))) s)
+                                               (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
                                                      (else
                                                       (collect-garbage 'incremental)
                                                       (let work ((i 0))
