@@ -126,12 +126,10 @@
   (define ct (cleanse-huffman-tree ht))
   (define tb (huffman-tree->hash-table ht))
   
-  (define prompt (if (current-verbose-mode) displayln void))
-  
   (define temp (make-temporary-file))
 
-  (prompt (format "temporary file:~a" temp))
-  (cond ((current-verbose-mode) (prompt (analyze-compression-ratio ht))))
+  (cond ((current-verbose-mode) (displayln (format "compression ratio:~a" (analyze-compression-ratio ht)))
+                                (displayln (format "temporary file:~a" temp))))
   
   (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
     (define fl
@@ -158,7 +156,7 @@
                              (let loop ((s 0))
                                (send-generic buffer read
                                              (lambda (n b)
-                                               (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
+                                               (cond ((eof-object? n) (cond ((current-verbose-mode) (displayln (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))))) s)
                                                      (else
                                                       (collect-garbage 'incremental)
                                                       (let work ((i 0))
