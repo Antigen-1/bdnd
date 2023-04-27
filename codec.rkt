@@ -16,10 +16,10 @@
     (thread
      (lambda ()
        (let loop ((rest null) (len 0))
+         (collect-garbage 'incremental)
          (sync (handle-evt
                 in-channel
                 (lambda (l)
-                  (collect-garbage 'incremental)
                   (cond ((not l) (cond ((not (zero? len)) (send-generic buffer commit (bit-list->byte rest))))
                                  (send-generic buffer flush))
                         (else
@@ -48,9 +48,9 @@
     (thread
      (lambda ()
        (let loop ()
+         (collect-garbage 'incremental)
          (send-generic buffer read
                        (lambda (n b)
-                         (collect-garbage 'incremental)
                          (cond ((not (eof-object? n))
                                 (let work ((i 0))
                                   (cond ((= i n) (loop))
