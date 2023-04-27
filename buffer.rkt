@@ -10,9 +10,9 @@
 
     (define buffer (make-bytes size))
     
-    (define current-input (make-parameter (current-input-port)))
+    (define current-input (box (current-input-port)))
 
-    (define (set-input port) (current-input port))
+    (define (set-input port) (set-box! current-input port))
 
     (define (read (handler #f))
       (sync (if handler (handle-evt (read-bytes!-evt buffer (current-input)) (lambda (n) (handler n buffer))) (read-bytes-evt size (current-input)))))
@@ -27,9 +27,9 @@
 
     (define buffer (make-bytes size))
 
-    (define current-output (make-parameter (current-output-port)))
+    (define current-output (box (current-output-port)))
 
-    (define (set-output port) (current-output port))
+    (define (set-output port) (set-box! current-output port))
     
     (define counter (box 0))
     (define (commit byte)

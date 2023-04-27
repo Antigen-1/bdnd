@@ -22,10 +22,10 @@
                                      (cond ((zero? s) (send-generic buffer flush) l)
                                            ((null? l) (loop t (sync ich) s))
                                            (else
-                                            (collect-garbage 'incremental)
                                             (let ((r (index-huffman-tree (car l) t)))
                                               (cond ((byte? r)
-                                                     (begin (send-generic buffer commit r) (loop tree (cdr l) (sub1 s))))
+                                                     (send-generic buffer commit r)
+                                                     (loop tree (cdr l) (sub1 s)))
                                                     (else (loop r (cdr l) s))))))))))))
              null
              filelist))
