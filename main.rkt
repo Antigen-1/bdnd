@@ -159,6 +159,7 @@
                            (cons
                             (list
                              (let loop ((s 0))
+                               (collect-garbage 'incremental) ;;call `collect-garbage` with a periodic task
                                (send-generic buffer read
                                              (lambda (n b)
                                                (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)

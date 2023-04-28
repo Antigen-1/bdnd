@@ -16,7 +16,6 @@
     (thread
      (lambda ()
        (let loop ((rest null) (len 0))
-         (collect-garbage 'incremental)
          (sync (handle-evt
                 in-channel
                 (lambda (l)
@@ -48,7 +47,7 @@
     (thread
      (lambda ()
        (let loop ()
-         (collect-garbage 'incremental)
+         (collect-garbage 'incremental) ;;call `collect-garbage` with a periodic task
          (send-generic buffer read
                        (lambda (n b)
                          (cond ((not (eof-object? n))
