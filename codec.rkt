@@ -7,7 +7,7 @@
 
   (send-generic buffer set-output port)
   
-  (define/caching (bit-list->byte l (i 1) (r 0))
+  (define (bit-list->byte l (i 1) (r 0))
     (cond ((null? l) r)
           ((zero? (car l)) (bit-list->byte (cdr l) (* 2 i) r))
           (else (bit-list->byte (cdr l) (* 2 i) (+ r i)))))
