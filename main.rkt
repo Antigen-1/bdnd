@@ -148,10 +148,11 @@
           (define buffer (new in-buffer% (size (cond ((current-buffer-size)) (else 1000000)))))
           (define filelist
             (parameterize ((current-directory (current-handling-directory)))
-              (for/fold ((r null)) ((f (in-directory)))
-                (cond ((file-exists? f)
-                       (define start (current-milliseconds))
-                       (call-with-input-file/lock
+              (fold-files
+               (lambda (f sym r)
+                 (cond ((eq? sym 'file)
+                        (define start (current-milliseconds))
+                        (call-with-input-file/lock
                          f
                          (lambda (in)
                            (file-stream-buffer-mode in 'block)
@@ -170,7 +171,8 @@
                                                                     (work (add1 i))))))))))
                              (path->string f))
                             r))))
-                      (else r)))))
+                       (else r)))
+               null #f #t)))
           (async-channel-put och #f)
           (sync thd)
           (reverse filelist))))
