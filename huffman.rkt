@@ -9,16 +9,16 @@
   (for ((b (in-port read-byte port)))
     (vector-update vec b add1)))
 
-(require "lock.rkt")
+(require "lock.rkt" racket/file)
 
 (define (path->frequency-vector path)
   (define fv (init))
 
-  (let loop ((p path))
-    (define rp (resolve-path p))
-    (if (file-exists? rp)
-        (call-with-input-file/lock rp (lambda (in) (|use port to update vector| in fv)))
-        (parameterize ((current-directory rp)) (for ((pd (in-directory))) (loop pd)))))
+  (fold-files
+   (lambda (p s fv)
+     (cond ((eq? s 'file) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv)))))
+     fv)
+   fv path #t)
 
   fv)
 
