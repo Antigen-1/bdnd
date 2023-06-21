@@ -184,7 +184,7 @@
           (lambda (fout)
             (file-stream-buffer-mode fout 'block)
             (displayln "#lang racket/base" fout)
-            (displayln "'#reader bdnd" fout)
+            (displayln "'#reader (submod bdnd reader)" fout)
             (s-exp->fasl fl fout)
             (s-exp->fasl ct fout)
             (s-exp->fasl (current-prefix) fout)
