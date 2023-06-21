@@ -1,5 +1,5 @@
 #lang racket/base
-(require racket/async-channel racket/list sugar/cache "buffer.rkt" racket/class)
+(require racket/async-channel racket/list "buffer.rkt" racket/class)
 
 (define (compress-to-port port size)
   (define in-channel (make-async-channel size))
@@ -37,11 +37,9 @@
 
   (send-generic buffer set-input port)
   
-  (define/caching (byte->bit-list b (r null) (n 8))
+  (define (byte->bit-list b (r null) (n 8))
     (cond ((zero? n) (reverse r))
-          (else
-           (define-values (qt rm) (quotient/remainder b 2))
-           (byte->bit-list qt (cons rm r) (sub1 n)))))
+          (else (byte->bit-list (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r) (sub1 n)))))
   
   (define thd
     (thread
