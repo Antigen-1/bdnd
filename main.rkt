@@ -95,8 +95,8 @@
     (define table (huffman-tree->hash-table tree))
     (check-equal? (consult-huffman-tree 97 table) '(0))
     (check-equal? (consult-huffman-tree 98 table) '(1 0 1))
-    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 99 table)) 99)
-    (check-eq? (foldl (lambda (ins tree) (index-huffman-tree ins tree)) ctree (consult-huffman-tree 100 table)) 100)))
+    (define (check byte) (check-eq? (cadr (call-with-values (lambda () (index-huffman-tree (consult-huffman-tree byte table) ctree)) list)) byte))
+    (map check '(97 98 99 100))))
 
 (module+ main
   ;; (Optional) main submodule. Put code here if you need it to be executed when
