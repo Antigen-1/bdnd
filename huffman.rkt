@@ -91,9 +91,8 @@
         (else (list (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
 
 (define (index-huffman-tree lst tree)
-  (cond ((node-is-leaf? tree) (values lst (node-content tree)))
-        ((null? lst) (values null tree))
-        (else (index-huffman-tree (cdr lst) (if (zero? (car lst)) (left-node tree) (right-node tree))))))
+  (cond ((or (null? lst) (byte? tree)) (values lst tree))
+        (else (index-huffman-tree (cdr lst) (if (zero? (car lst)) (car tree) (cadr tree))))))
 
 (provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
          analyze-compression-ratio)
