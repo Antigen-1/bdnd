@@ -39,7 +39,7 @@
              (lambda ()
                (file-stream-buffer-mode port 'block)
                (read-line port)
-               (apply bdnd-interpret port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))) (fasl->s-exp port))
+               (apply bdnd-interpret port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r))) (fasl->s-exp port)))
              (lambda () (port-file-unlock port))))
           (else (raise (make-exn:fail:filesystem
                         "fail to acquire the file lock when reading the source file"
