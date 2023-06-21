@@ -30,23 +30,22 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
-  (require racket/fasl racket/syntax "interpret.rkt")
+  (require racket/fasl "interpret.rkt")
   
-  (define (read-syntax src port)
+  (define (read port)
     (cond ((port-try-file-lock? port 'shared)
            (dynamic-wind
              void
              (lambda ()
                (file-stream-buffer-mode port 'block)
                (read-line port)
-               (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r))))
-               (datum->syntax #f (list 'module (generate-temporary 'bdnd) 'racket/base)))
+               (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
              (lambda () (port-file-unlock port))))
           (else (raise (make-exn:fail:filesystem
                         "fail to acquire the file lock when reading the source file"
                         (current-continuation-marks))))))
   
-  (provide read-syntax))
+  (provide read))
 
 (module+ test
   ;; Any code in this `test` submodule runs when this file is run using DrRacket
@@ -184,7 +183,7 @@
           (current-output-file)
           (lambda (fout)
             (file-stream-buffer-mode fout 'block)
-            (displayln "#lang bdnd" fout)
+            (displayln "#reader bdnd" fout)
             (s-exp->fasl fl fout)
             (s-exp->fasl ct fout)
             (s-exp->fasl (current-prefix) fout)

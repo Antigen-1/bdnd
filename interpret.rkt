@@ -7,9 +7,12 @@
   (let-values (((ich thd) (decompress-from-port port (cond (size) (else 1000000))))
                ((buffer) (new out-buffer% (size (cond (size) (else 1000000))))))
     (make-directory* prefix)
+    (define counter (box 0))
+    (define (increase n) (set-box! counter (+ n (unbox counter))))
     (parameterize ((current-directory prefix))
       (foldl (lambda (f i) (let ((name (cadr f))
                                  (size (car f)))
+                             (increase size)
                              (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f name) (raise e))))
                                (make-parent-directory* name)
                                (call-with-output-file/lock
@@ -28,4 +31,5 @@
                                                     (else (loop r (cdr l) s))))))))))))
              null
              filelist))
-    (sync (handle-evt thd void))))
+    (sync thd)
+    (unbox counter)))
