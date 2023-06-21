@@ -39,7 +39,7 @@
              (lambda ()
                (file-stream-buffer-mode port 'block)
                (read-line port)
-               (bdnd-interpret (fasl->s-exp port) (fasl->s-exp port) (fasl->s-exp port) port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
+               (apply bdnd-interpret port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))) (fasl->s-exp port))
              (lambda () (port-file-unlock port))))
           (else (raise (make-exn:fail:filesystem
                         "fail to acquire the file lock when reading the source file"
@@ -185,7 +185,5 @@
             (file-stream-buffer-mode fout 'block)
             (displayln "#lang racket/base" fout)
             (displayln "'#reader (submod bdnd reader)" fout)
-            (s-exp->fasl fl fout)
-            (s-exp->fasl ct fout)
-            (s-exp->fasl (current-prefix) fout)
+            (s-exp->fasl (list fl ct (current-prefix)) fout)
             (copy-port in fout)))))))

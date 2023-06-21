@@ -2,7 +2,7 @@
 (require "codec.rkt" "huffman.rkt" racket/file "lock.rkt" racket/class "buffer.rkt")
 (provide bdnd-interpret)
 
-(define (bdnd-interpret filelist tree prefix port size)
+(define (bdnd-interpret port size filelist tree prefix)
   (file-stream-buffer-mode port 'block)
   (let-values (((ich thd) (decompress-from-port port (cond (size) (else 1000000))))
                ((buffer) (new out-buffer% (size (cond (size) (else 1000000))))))
