@@ -32,7 +32,7 @@
 (module reader racket/base
   (require racket/fasl "interpret.rkt")
   
-  (define (read port)
+  (define (read-syntax _ port)
     (cond ((port-try-file-lock? port 'shared)
            (dynamic-wind
              void
@@ -45,7 +45,7 @@
                         "fail to acquire the file lock when reading the source file"
                         (current-continuation-marks))))))
   
-  (provide read))
+  (provide read-syntax))
 
 (module+ test
   ;; Any code in this `test` submodule runs when this file is run using DrRacket
