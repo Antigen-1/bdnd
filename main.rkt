@@ -183,7 +183,6 @@
           (current-output-file)
           (lambda (fout)
             (file-stream-buffer-mode fout 'block)
-            (displayln "#lang racket/base" fout)
-            (displayln "'#reader (submod bdnd reader)" fout)
+            (displayln "#reader (submod bdnd reader)" fout)
             (s-exp->fasl (list fl ct (current-prefix)) fout)
             (copy-port in fout)))))))
