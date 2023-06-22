@@ -45,7 +45,6 @@
     (thread
      (lambda ()
        (let loop ()
-         (collect-garbage 'incremental) ;;call `collect-garbage` with a periodic task
          (send-generic buffer read
                        (lambda (n b)
                          (cond ((not (eof-object? n))

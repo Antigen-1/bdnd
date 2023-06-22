@@ -130,8 +130,11 @@
   
   (define temp (make-temporary-file))
 
-  (define-syntax-rule (prompt str ...)
-    (cond ((current-verbose-mode) ((current-log-handler) str) ...)))
+  (define prompt
+    (cond ((current-verbose-mode)
+           (define logger (current-log-handler))
+           (lambda str-lst (map logger str-lst)))
+          (else void)))
 
   (prompt (format "compression ratio:~a" (analyze-compression-ratio ht))
           (format "temporary file:~a" temp))
@@ -159,7 +162,6 @@
                            (cons
                             (list
                              (let loop ((s 0))
-                               (collect-garbage 'incremental) ;;call `collect-garbage` with a periodic task
                                (send-generic buffer read
                                              (lambda (n b)
                                                (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
@@ -186,4 +188,5 @@
             (displayln "#lang racket/base" fout)
             (displayln "#reader (submod bdnd reader)" fout)
             (s-exp->fasl (list fl ct (current-prefix)) fout)
-            (copy-port in fout)))))))
+            (copy-port in fout)))))
+    (delete-file temp)))

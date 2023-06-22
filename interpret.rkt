@@ -26,13 +26,13 @@
                                  (lambda (out)
                                    (file-stream-buffer-mode out 'block)
                                    (send-generic buffer set-output out)
-                                   (let loop ((t tree) (l (check-and-get i)) (s size))
+                                   (let loop ((t tree) (l i) (s size))
                                      (cond ((zero? s) (send-generic buffer flush) l)
                                            (else
                                             (define-values (ls tr) (index-huffman-tree l t))
                                             (cond ((byte? tr) (send-generic buffer commit tr) (loop tree (check-and-get ls) (sub1 s)))
                                                   (else (loop tr (get) s)))))))))))
-             null
+             (get)
              filelist))
     (sync thd)
     (unbox counter)))
