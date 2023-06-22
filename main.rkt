@@ -133,7 +133,7 @@
   (define prompt
     (cond ((current-verbose-mode)
            (define logger (current-log-handler))
-           (lambda str-lst (map logger str-lst)))
+           (lambda str-lst (void (map logger str-lst))))
           (else void)))
 
   (prompt (format "compression ratio:~a" (analyze-compression-ratio ht))
