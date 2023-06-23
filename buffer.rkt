@@ -14,8 +14,8 @@
 
     (define (set-input port) (set-box! current-input port))
 
-    (define (read (handler #f))
-      (sync (if handler (handle-evt (read-bytes!-evt buffer (unbox current-input)) (lambda (n) (handler n buffer))) (read-bytes-evt size (unbox current-input)))))
+    (define (read handler)
+      (sync (handle-evt (read-bytes!-evt buffer (unbox current-input)) (lambda (n) (handler n buffer)))))
 
     (public set-input read)))
 

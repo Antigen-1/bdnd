@@ -67,9 +67,10 @@
     (send-generic out-buffer flush)
     (close-output-port out)
     (let work ((b #""))
-      (define v (send-generic in-buffer read))
-      (cond ((eof-object? v) (check-equal? bytes b))
-            (else (work (bytes-append b v))))))
+      (send-generic in-buffer read
+                    (lambda (n bt)
+                      (cond ((eof-object? n) (check-equal? bytes b))
+                            (else (work (bytes-append b (subbytes bt 0 n)))))))))
 
   (require racket/async-channel "codec.rkt")
   
