@@ -1,5 +1,5 @@
 #lang racket/base
-(require racket/async-channel racket/list "buffer.rkt" racket/class)
+(require racket/async-channel "buffer.rkt" racket/class)
 
 (define (compress-to-port port size)
   (define in-channel (make-async-channel size))
@@ -48,12 +48,9 @@
          (send-generic buffer read
                        (lambda (n b)
                          (cond ((not (eof-object? n))
-                                (let work ((i 0))
-                                  (cond ((= i n) (loop))
-                                        (else
-                                         (async-channel-put out-channel
-                                                            (byte->bit-list (bytes-ref b i)))
-                                         (work (add1 i)))))))))))))
+                                (for ((bt (in-bytes b 0 n)))
+                                  (async-channel-put out-channel (byte->bit-list bt)))
+                                (loop)))))))))
 
   (values out-channel thd))
 

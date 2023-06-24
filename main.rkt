@@ -172,10 +172,9 @@
                                              (lambda (n b)
                                                (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
                                                      (else
-                                                      (let work ((i 0))
-                                                        (cond ((= i n) (loop (+ s n)))
-                                                              (else (async-channel-put och (consult-huffman-tree (bytes-ref b i) tb))
-                                                                    (work (add1 i))))))))))
+                                                      (for ((bt (in-bytes b 0 n)))
+                                                        (async-channel-put och (consult-huffman-tree bt tb)))
+                                                      (loop (+ s n)))))))
                              (path->string f))
                             r))))
                        (else r)))
