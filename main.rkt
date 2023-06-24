@@ -131,19 +131,24 @@
   
   (define temp (make-temporary-file))
 
-  (define prompt
-    (cond ((current-verbose-mode)
-           (define logger (current-log-handler))
-           (lambda str-lst (void (map logger str-lst))))
-          (else void)))
+  (define log
+    (and (current-verbose-mode)
+         (let ((logger (current-log-handler)))
+           (lambda str-lst (void (map logger str-lst))))))
 
+  (define-syntax-rule (prompt expr ...)
+    (cond (log (log expr ...))))
+  
   (prompt (format "compression ratio:~a" (analyze-compression-ratio ht))
           (format "temporary file:~a" temp))
   
-  (with-handlers ((exn:fail:filesystem? (lambda (e) (delete-directory/files #:must-exist? #f (current-output-file)) (raise e))))
+  (with-handlers ((exn? (lambda (e)
+                          (delete-directory/files #:must-exist? #f (current-output-file))
+                          (delete-file temp)
+                          (raise e))))
     (define fl
       (call-with-output-file/lock
-        #:exists 'truncate/replace
+        #:exists 'truncate
         temp
         (lambda (out)
           (file-stream-buffer-mode out 'block)
