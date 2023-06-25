@@ -1,70 +1,87 @@
-#lang racket/base
-(define (init)
+#lang typed/racket/base
+;;All aliases
+(define-type Frequency-Vector (Vectorof Natural))
+(define-type Path-String (U Path String))
+(define-type Content (U False Byte))
+(define-type Leaf (List Exact-Positive-Integer Byte))
+(define-type Node (Rec N (List Exact-Positive-Integer False (U N Leaf) (U N Leaf))))
+(define-type Node-or-Leaf (U Leaf Node))
+(define-type Instructions (Listof (U Zero One)))
+(define-type Cleansed (Rec N (List (U Byte N) (U Byte N))))
+(define-type Table (HashTable Byte Instructions))
+
+;;Typed Functions
+(define (init) : Frequency-Vector
   (make-vector 256 0))
 
-(define (vector-update vec pos proc)
+(define (vector-update (vec : Frequency-Vector) (pos : Natural) (proc : (-> Natural Natural)))
   (vector-set! vec pos (proc (vector-ref vec pos))))
 
-(define (|use port to update vector| port vec)
+(define (|use port to update vector| (port : Input-Port) (vec : Frequency-Vector))
   (for ((b (in-port read-byte port)))
     (vector-update vec b add1)))
 
-(require "lock.rkt" racket/file)
+(require/typed "lock.rkt" (call-with-input-file/lock (-> Path-String (-> Input-Port Any) Any)))
 
-(define (path->frequency-vector path)
+(define (path->frequency-vector (path : Path-String)) : Frequency-Vector
   (define fv (init))
 
-  (fold-files
-   (lambda (p s fv)
-     (cond ((eq? s 'file) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv)))))
-     fv)
-   fv path #t)
+  (for ((p (in-directory path)))
+    (cond ((file-exists? p) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv))))))
 
   fv)
 
-(define make-node list)
+(: make-node : (case-> (Exact-Positive-Integer Byte -> Leaf)
+                       (Exact-Positive-Integer False Node-or-Leaf Node-or-Leaf -> Node)))
+(: node-frequency (-> Node-or-Leaf Exact-Positive-Integer))
+(: node-content (-> Node-or-Leaf Content))
+(: left-node (-> Node Node-or-Leaf))
+(: right-node (-> Node Node-or-Leaf))
+(define make-node
+  (case-lambda (((f : Exact-Positive-Integer) (c : Byte)) (list f c))
+               (((f : Exact-Positive-Integer) (c : False) (l : Node-or-Leaf) (r : Node-or-Leaf)) (list f c l r))))
 (define node-frequency car)
 (define node-content cadr)
 (define left-node caddr)
 (define right-node cadddr)
-(define node-is-leaf? (compose byte? node-content))
+(define node-is-leaf? (make-predicate Leaf))
 
-(require racket/contract)
-
-(define leaf/c (list/c any/c byte?))
-(define node/c (list/c any/c not any/c any/c))
-
+(: insert-node (->* (Node-or-Leaf (Listof Node-or-Leaf)) ((Listof Node-or-Leaf)) (Listof Node-or-Leaf)))
 (define (insert-node o l (r null))
   (cond ((null? l) (reverse (cons o r)))
         ((> (node-frequency o) (node-frequency (car l))) (insert-node o (cdr l) (cons (car l) r)))
         (else (append (reverse (cons o r)) l))))
 
-(define (sort-frequency-vector-to-list fv)
-  (let loop ((i 0) (r null))
-    (cond ((= i 256) r)
-          ((zero? (vector-ref fv i)) (loop (add1 i) r))
-          (else (loop (add1 i) (insert-node (make-node (vector-ref fv i) i) r))))))
+(: sort-frequency-vector-to-list (->* (Frequency-Vector) (Natural (Listof Node-or-Leaf)) (Listof Node-or-Leaf)))
+(define (sort-frequency-vector-to-list fv (i 0) (r null))
+  (cond ((byte? i)
+         (define v (vector-ref fv i))
+         (sort-frequency-vector-to-list
+          fv (add1 i)
+          (if (zero? v) r (insert-node (make-node v i) r))))
+        (else r)))
 
-(define (merge-two-nodes n1 n2)
+(define (merge-two-nodes (n1 : Node-or-Leaf) (n2 : Node-or-Leaf))
   (call-with-values (lambda () (if (> (node-frequency n1) (node-frequency n2)) (values n2 n1) (values n1 n2)))
-                    (lambda (min max)
+                    (lambda ((min : Node-or-Leaf) (max : Node-or-Leaf))
                       (make-node (+ (node-frequency min) (node-frequency max))
                                  #f ;;generating the set is not necessary because in fact I'll never consult it
                                  min max))))
 
-(define/contract (ordered-list->huffman-tree l)
-  (-> (non-empty-listof (or/c node/c leaf/c)) node/c); at least one element is required to call this function and the value returned by this function must not be a leaf
-  (cond ((null? (cdr l)) (car l))
+(: ordered-list->huffman-tree (-> (Listof Node-or-Leaf) Node))
+(define (ordered-list->huffman-tree l)
+  (cond ((null? l) (raise (make-exn:fail:contract "There is no byte" (current-continuation-marks))))
+        ((null? (cdr l)) (define v (car l)) (if ((make-predicate Node) v) v (raise (make-exn:fail:contract "There is only one single byte" (current-continuation-marks)))))
         (else (ordered-list->huffman-tree (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l))))))
 
-(define (make-huffman-tree path)
+(define (make-huffman-tree (path : Path-String))
   (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
 
 (require racket/format)
 
-(define (analyze-compression-ratio tree)
-  (define vec (vector 0 0))
-  (let loop ((depth 0) (tree tree))
+(define (analyze-compression-ratio (tree : Node))
+  (define vec : (Vector Natural Exact-Rational) (vector 0 0))
+  (let loop ((depth 0) (tree : Node-or-Leaf tree))
     (cond ((node-is-leaf? tree) (vector-set! vec 0 (+ (node-frequency tree) (vector-ref vec 0)))
                                 (vector-set! vec 1 (+ (/ (* (node-frequency tree) depth) 8)
                                                       (vector-ref vec 1))))
@@ -75,20 +92,24 @@
        (* 100 (/ (ceiling (vector-ref vec 1)) (vector-ref vec 0))))
    "%"))
 
-(define (huffman-tree->hash-table t)
-  (define h (make-hasheq))
-  (let loop ((t t) (r null))
-    (cond ((node-is-leaf? t) (hash-set! h (node-content t) (reverse r)))
+(define (huffman-tree->hash-table (t : Node))
+  (define h : Table (make-hasheq))
+  (let loop ((t : Node-or-Leaf t) (r : Instructions null))
+    (cond ((node-is-leaf? t) ((inst hash-set! Byte Instructions) h (cast (node-content t) Byte) (reverse r)))
           (else (loop (left-node t) (cons 0 r))
                 (loop (right-node t) (cons 1 r)))))
   h)
 
-(define (consult-huffman-tree b t)
+(define (consult-huffman-tree (b : Byte) (t : Table))
   (hash-ref t b))
 
+(: cleanse-huffman-tree (-> Node-or-Leaf (U Cleansed Byte)))
+
 (define (cleanse-huffman-tree tree)
-  (cond ((node-is-leaf? tree) (node-content tree))
+  (cond ((node-is-leaf? tree) (cast (node-content tree) Byte))
         (else (list (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
+
+(: index-huffman-tree (-> Instructions (U Cleansed Byte) (Values Instructions (U Cleansed Byte))))
 
 (define (index-huffman-tree lst tree)
   (cond ((or (null? lst) (byte? tree)) (values lst tree))
