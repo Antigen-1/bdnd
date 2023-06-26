@@ -119,10 +119,14 @@
   (cond ((node-is-leaf? tree) (leaf-content tree))
         (else (list (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
 
-(: index-huffman-tree (-> Instructions Natural (U Cleansed Byte) (Values Instructions Natural (U Cleansed Byte))))
-(define (index-huffman-tree int len tree)
-  (cond ((or (zero? len) (byte? tree)) (values int len tree))
-        (else (index-huffman-tree (arithmetic-shift int -1) (sub1 len) (if (zero? (bitwise-bit-field int 0 1)) (car tree) (cadr tree))))))
+(module* shallow typed/racket/base/shallow
+  (require (submod ".."))
+  (provide index-huffman-tree)
+  
+  (: index-huffman-tree (-> Instructions Natural (U Cleansed Byte) (Values Instructions Natural (U Cleansed Byte))))
+  (define (index-huffman-tree int len tree)
+    (cond ((or (zero? len) (byte? tree)) (values int len tree))
+          (else (index-huffman-tree (arithmetic-shift int -1) (sub1 len) (if (zero? (bitwise-bit-field int 0 1)) (car tree) (cadr tree)))))))
 
-(provide index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
-         analyze-compression-ratio)
+(provide make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
+         analyze-compression-ratio Instructions Cleansed)

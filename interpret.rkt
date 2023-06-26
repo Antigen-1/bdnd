@@ -1,5 +1,5 @@
 #lang racket/base
-(require "codec.rkt" "huffman.rkt" racket/file "lock.rkt" racket/class "buffer.rkt")
+(require "codec.rkt" (submod "huffman.rkt" shallow) racket/file "lock.rkt" racket/class "buffer.rkt")
 (provide bdnd-interpret)
 
 (define (bdnd-interpret port size filelist tree prefix)
