@@ -2,13 +2,12 @@
 ;;All aliases
 (define-type Frequency-Vector (Vectorof Natural))
 (define-type Path-String (U Path String))
-(define-type Content (U False Byte))
 (define-type Leaf (List Exact-Positive-Integer Byte))
 (define-type Node (Rec N (List Exact-Positive-Integer False (U N Leaf) (U N Leaf))))
 (define-type Node-or-Leaf (U Leaf Node))
-(define-type Instructions (Listof (U Zero One)))
+(define-type Instructions Natural)
 (define-type Cleansed (Rec N (List (U Byte N) (U Byte N))))
-(define-type Table (Immutable-HashTable Byte Instructions))
+(define-type Table (Immutable-HashTable Byte (Pair Exact-Positive-Integer Instructions)))
 
 ;;Typed Functions
 (define (init) : Frequency-Vector
@@ -33,6 +32,8 @@
 
   fv)
 
+;;;Node and leaf operations
+;;;------------------------------------------------------------------------------------
 (: make-node : (case-> (Exact-Positive-Integer Byte -> Leaf)
                        (Exact-Positive-Integer False Node-or-Leaf Node-or-Leaf -> Node)))
 (: node-frequency (-> Node-or-Leaf Exact-Positive-Integer))
@@ -53,6 +54,7 @@
   (cond ((null? l) (reverse (cons o r)))
         ((> (node-frequency o) (node-frequency (car l))) (insert-node o (cdr l) (cons (car l) r)))
         (else (append (reverse (cons o r)) l))))
+;;;------------------------------------------------------------------------------------
 
 (: sort-frequency-vector-to-list (->* (Frequency-Vector) (Natural (Listof Node-or-Leaf)) (Listof Node-or-Leaf)))
 (define (sort-frequency-vector-to-list fv (i 0) (r null))
@@ -97,17 +99,20 @@
    "%"))
 
 (define (huffman-tree->hash-table (t : Node)) : Table
-  (let loop ((t : Node t) (r : Instructions null) (h ((inst hasheq Byte Instructions))))
+  (define (handle (v : (U Instructions False)) (s : (U One Zero))) : Natural
+    (if v (bitwise-ior (arithmetic-shift v 1) s) s))
+  
+  (let loop ((t : Node t) (r : (U False Instructions) #f) (d : Natural 0) (h ((inst hasheq Byte (Pair Exact-Positive-Integer Instructions)))))
     (define left (left-node t))
     (define right (right-node t))
     (cond ((and (node-is-leaf? left) (node-is-leaf? right))
            (hash-set*
             h
-            (leaf-content left) (reverse (cons 0 r))
-            (leaf-content right) (reverse (cons 1 r))))
-          ((node-is-leaf? left) (loop right (cons 1 r) (hash-set h (leaf-content left) (reverse (cons 0 r)))))
-          ((node-is-leaf? right) (loop left (cons 0 r) (hash-set h (leaf-content right) (reverse (cons 1 r)))))
-          (else (loop right (cons 1 r) (loop left (cons 0 r) h))))))
+            (leaf-content left) (cons (add1 d) (handle r 0))
+            (leaf-content right) (cons (add1 d) (handle r 1))))
+          ((node-is-leaf? left) (loop right (handle r 1) (add1 d) (hash-set h (leaf-content left) (cons (add1 d) (handle r 0)))))
+          ((node-is-leaf? right) (loop left (handle r 0) (add1 d) (hash-set h (leaf-content right) (cons (add1 d) (handle r 1)))))
+          (else (loop right (handle r 1) (add1 d) (loop left (handle r 0) (add1 d) h))))))
 
 (define (consult-huffman-tree (b : Byte) (t : Table))
   (hash-ref t b))
@@ -117,10 +122,10 @@
   (cond ((node-is-leaf? tree) (leaf-content tree))
         (else (list (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
 
-(: index-huffman-tree (-> Instructions (U Cleansed Byte) (Values Instructions (U Cleansed Byte))))
-(define (index-huffman-tree lst tree)
-  (cond ((or (null? lst) (byte? tree)) (values lst tree))
-        (else (index-huffman-tree (cdr lst) (if (zero? (car lst)) (car tree) (cadr tree))))))
+(: index-huffman-tree (-> Instructions Natural (U Cleansed Byte) (Values Instructions Natural (U Cleansed Byte))))
+(define (index-huffman-tree int len tree)
+  (cond ((or (zero? len) (byte? tree)) (values int len tree))
+        (else (index-huffman-tree (arithmetic-shift int -1) (sub1 len) (if (zero? (bitwise-bit-field int 0 1)) (car tree) (cadr tree))))))
 
 (provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
          analyze-compression-ratio)

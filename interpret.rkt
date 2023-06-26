@@ -9,8 +9,8 @@
   
   (let-values (((ich thd) (decompress-from-port port (cond (size) (else 1000000))))
                ((buffer) (new out-buffer% (size (cond (size) (else 1000000))))))
-    (define (check-and-get l) (if (null? l) (sync ich) l))
-    (define (get) (sync ich))
+    (define (check-and-get l) (if (zero? (car l)) (cons 8 (sync ich)) l))
+    (define (get) (cons 8 (sync ich)))
     
     (define counter (box 0))
     (define (increase n) (set-box! counter (+ n (unbox counter))))
@@ -29,8 +29,8 @@
                                    (let loop ((t tree) (l i) (s size))
                                      (cond ((zero? s) (send-generic buffer flush) l)
                                            (else
-                                            (define-values (ls tr) (index-huffman-tree l t))
-                                            (cond ((byte? tr) (send-generic buffer commit tr) (loop tree (check-and-get ls) (sub1 s)))
+                                            (define-values (bt ln tr) (index-huffman-tree (cdr l) (car l) t))
+                                            (cond ((byte? tr) (send-generic buffer commit tr) (loop tree (check-and-get (cons ln bt)) (sub1 s)))
                                                   (else (loop tr (get) s)))))))))))
              (get)
              filelist))

@@ -7,11 +7,6 @@
 
   (send-generic buffer set-output port)
   
-  (define (bit-list->int l (i 1) (r 0))
-    (cond ((null? l) r)
-          ((zero? (car l)) (bit-list->int (cdr l) (arithmetic-shift i 1) r))
-          (else (bit-list->int (cdr l) (arithmetic-shift i 1) (bitwise-ior r i)))))
-  
   (define thd
     (thread
      (lambda ()
@@ -22,7 +17,9 @@
                   (cond ((not l) (cond ((not (zero? len)) (send-generic buffer commit rest)))
                                  (send-generic buffer flush))
                         (else
-                         (let work ((int (bit-list->int l (arithmetic-shift 1 len) rest)) (ln (+ len (length l))))
+                         (define int-len (car l))
+                         (define integer (cdr l))
+                         (let work ((int (bitwise-ior (arithmetic-shift integer len) rest)) (ln (+ len int-len)))
                            (if (>= ln 8)
                                (begin
                                  (send-generic buffer commit (bitwise-bit-field int 0 8))
@@ -37,10 +34,6 @@
 
   (send-generic buffer set-input port)
   
-  (define (byte->bit-list b (r null) (n 8))
-    (cond ((zero? n) (reverse r))
-          (else (byte->bit-list (arithmetic-shift b -1) (cons (bitwise-bit-field b 0 1) r) (sub1 n)))))
-  
   (define thd
     (thread
      (lambda ()
@@ -49,7 +42,7 @@
                        (lambda (n b)
                          (cond ((not (eof-object? n))
                                 (for ((bt (in-bytes b 0 n)))
-                                  (async-channel-put out-channel (byte->bit-list bt)))
+                                  (async-channel-put out-channel bt))
                                 (loop)))))))))
 
   (values out-channel thd))
