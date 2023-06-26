@@ -99,8 +99,8 @@
    "%"))
 
 (define (huffman-tree->hash-table (t : Node)) : Table
-  (define (handle (v : (U Instructions False)) (s : (U One Zero))) : Natural
-    (if v (bitwise-ior (arithmetic-shift v 1) s) s))
+  (define (handle (v : (U Instructions False)) (d : Natural) (s : (U One Zero))) : Natural
+    (if v (bitwise-ior v (arithmetic-shift s d)) s))
   
   (let loop ((t : Node t) (r : (U False Instructions) #f) (d : Natural 0) (h ((inst hasheq Byte (Pair Exact-Positive-Integer Instructions)))))
     (define left (left-node t))
@@ -108,11 +108,11 @@
     (cond ((and (node-is-leaf? left) (node-is-leaf? right))
            (hash-set*
             h
-            (leaf-content left) (cons (add1 d) (handle r 0))
-            (leaf-content right) (cons (add1 d) (handle r 1))))
-          ((node-is-leaf? left) (loop right (handle r 1) (add1 d) (hash-set h (leaf-content left) (cons (add1 d) (handle r 0)))))
-          ((node-is-leaf? right) (loop left (handle r 0) (add1 d) (hash-set h (leaf-content right) (cons (add1 d) (handle r 1)))))
-          (else (loop right (handle r 1) (add1 d) (loop left (handle r 0) (add1 d) h))))))
+            (leaf-content left) (cons (add1 d) (handle r d 0))
+            (leaf-content right) (cons (add1 d) (handle r d 1))))
+          ((node-is-leaf? left) (loop right (handle r d 1) (add1 d) (hash-set h (leaf-content left) (cons (add1 d) (handle r d 0)))))
+          ((node-is-leaf? right) (loop left (handle r d 0) (add1 d) (hash-set h (leaf-content right) (cons (add1 d) (handle r d 1)))))
+          (else (loop right (handle r d 1) (add1 d) (loop left (handle r d 0) (add1 d) h))))))
 
 (define (consult-huffman-tree (b : Byte) (t : Table))
   (hash-ref t b))
