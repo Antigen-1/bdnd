@@ -86,7 +86,7 @@
     (check-eq? (sync ch2) int)
     (check-eq? (sync ch2) 0))
 
-  (require "huffman.rkt")
+  (require "huffman.rkt" (submod "huffman.rkt" shallow))
   
   (test-case
       "huffman"
