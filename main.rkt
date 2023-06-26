@@ -79,12 +79,12 @@
     (define-values (in out) (make-pipe))
     (define-values (ch1 thd) (compress-to-port out 10))
     (define-values (ch2 _) (decompress-from-port in 10))
-    (define int #b011010111)
+    (define int #b11010111)
     (async-channel-put ch1 (cons 9 int))
     (async-channel-put ch1 #f)
     (sync (handle-evt thd (lambda (_) (close-output-port out))))
-    (check-eq? (sync ch2) #b01101011)
-    (check-eq? (sync ch2) 1))
+    (check-eq? (sync ch2) int)
+    (check-eq? (sync ch2) 0))
 
   (require "huffman.rkt")
   
