@@ -90,7 +90,7 @@
   
   (test-case
       "huffman"
-    (define tree (make-huffman-tree test-dir))
+    (define tree (make-huffman-tree (build-path test-dir "huffman")))
     (define ctree (cleanse-huffman-tree tree))
     (define table (huffman-tree->hash-table tree))
     (check-equal? (consult-huffman-tree 97 table) '(0))
