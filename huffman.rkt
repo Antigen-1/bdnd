@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/deep
 ;;All aliases
 (define-type Frequency-Vector (Vectorof Natural))
 (define-type Path-String (U Path String))
@@ -8,7 +8,7 @@
 (define-type Node-or-Leaf (U Leaf Node))
 (define-type Instructions (Listof (U Zero One)))
 (define-type Cleansed (Rec N (List (U Byte N) (U Byte N))))
-(define-type Table (HashTable Byte Instructions))
+(define-type Table (Immutable-HashTable Byte Instructions))
 
 ;;Typed Functions
 (define (init) : Frequency-Vector
@@ -26,22 +26,24 @@
 (define (path->frequency-vector (path : Path-String)) : Frequency-Vector
   (define fv (init))
 
-  (for ((p (in-directory path)))
-    (cond ((file-exists? p) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv))))))
+  (if (file-exists? path)
+      (call-with-input-file/lock path (lambda (in) (|use port to update vector| in fv)))
+      (for ((p (in-directory path)))
+        (cond ((file-exists? p) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv)))))))
 
   fv)
 
 (: make-node : (case-> (Exact-Positive-Integer Byte -> Leaf)
                        (Exact-Positive-Integer False Node-or-Leaf Node-or-Leaf -> Node)))
 (: node-frequency (-> Node-or-Leaf Exact-Positive-Integer))
-(: node-content (-> Node-or-Leaf Content))
+(: leaf-content (-> Leaf Byte))
 (: left-node (-> Node Node-or-Leaf))
 (: right-node (-> Node Node-or-Leaf))
 (define make-node
   (case-lambda (((f : Exact-Positive-Integer) (c : Byte)) (list f c))
                (((f : Exact-Positive-Integer) (c : False) (l : Node-or-Leaf) (r : Node-or-Leaf)) (list f c l r))))
 (define node-frequency car)
-(define node-content cadr)
+(define leaf-content cadr)
 (define left-node caddr)
 (define right-node cadddr)
 (define node-is-leaf? (make-predicate Leaf))
@@ -82,9 +84,11 @@
 (define (analyze-compression-ratio (tree : Node))
   (define vec : (Vector Natural Exact-Rational) (vector 0 0))
   (let loop ((depth 0) (tree : Node-or-Leaf tree))
-    (cond ((node-is-leaf? tree) (vector-set! vec 0 (+ (node-frequency tree) (vector-ref vec 0)))
-                                (vector-set! vec 1 (+ (/ (* (node-frequency tree) depth) 8)
-                                                      (vector-ref vec 1))))
+    (cond ((node-is-leaf? tree)
+           (define f (node-frequency tree))
+           (vector-set! vec 0 (+ f (vector-ref vec 0)))
+           (vector-set! vec 1 (+ (/ (* f depth) 8)
+                                 (vector-ref vec 1))))
           (else (loop (add1 depth) (left-node tree))
                 (loop (add1 depth) (right-node tree)))))
   (~a
@@ -92,25 +96,28 @@
        (* 100 (/ (ceiling (vector-ref vec 1)) (vector-ref vec 0))))
    "%"))
 
-(define (huffman-tree->hash-table (t : Node))
-  (define h : Table (make-hasheq))
-  (let loop ((t : Node-or-Leaf t) (r : Instructions null))
-    (cond ((node-is-leaf? t) ((inst hash-set! Byte Instructions) h (cast (node-content t) Byte) (reverse r)))
-          (else (loop (left-node t) (cons 0 r))
-                (loop (right-node t) (cons 1 r)))))
-  h)
+(define (huffman-tree->hash-table (t : Node)) : Table
+  (let loop ((t : Node t) (r : Instructions null) (h ((inst hasheq Byte Instructions))))
+    (define left (left-node t))
+    (define right (right-node t))
+    (cond ((and (node-is-leaf? left) (node-is-leaf? right))
+           (hash-set*
+            h
+            (leaf-content left) (reverse (cons 0 r))
+            (leaf-content right) (reverse (cons 1 r))))
+          ((node-is-leaf? left) (loop right (cons 1 r) (hash-set h (leaf-content left) (reverse (cons 0 r)))))
+          ((node-is-leaf? right) (loop left (cons 0 r) (hash-set h (leaf-content right) (reverse (cons 1 r)))))
+          (else (loop right (cons 1 r) (loop left (cons 0 r) h))))))
 
 (define (consult-huffman-tree (b : Byte) (t : Table))
   (hash-ref t b))
 
 (: cleanse-huffman-tree (-> Node-or-Leaf (U Cleansed Byte)))
-
 (define (cleanse-huffman-tree tree)
-  (cond ((node-is-leaf? tree) (cast (node-content tree) Byte))
+  (cond ((node-is-leaf? tree) (leaf-content tree))
         (else (list (cleanse-huffman-tree (left-node tree)) (cleanse-huffman-tree (right-node tree))))))
 
 (: index-huffman-tree (-> Instructions (U Cleansed Byte) (Values Instructions (U Cleansed Byte))))
-
 (define (index-huffman-tree lst tree)
   (cond ((or (null? lst) (byte? tree)) (values lst tree))
         (else (index-huffman-tree (cdr lst) (if (zero? (car lst)) (car tree) (cadr tree))))))
