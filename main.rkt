@@ -79,12 +79,12 @@
     (define-values (in out) (make-pipe))
     (define-values (ch1 thd) (compress-to-port out 10))
     (define-values (ch2 _) (decompress-from-port in 10))
-    (define bit-list '(0 1 1 0 1 0 1 1 1))
-    (async-channel-put ch1 bit-list)
+    (define int #o011010111)
+    (async-channel-put ch1 (cons 9 int))
     (async-channel-put ch1 #f)
     (sync (handle-evt thd (lambda (_) (close-output-port out))))
-    (check-equal? (sync ch2) '(0 1 1 0 1 0 1 1))
-    (check-equal? (sync ch2) '(1 0 0 0 0 0 0 0)))
+    (check-eq? (sync ch2) #o01101011)
+    (check-eq? (sync ch2) 1))
 
   (require "huffman.rkt")
   
@@ -93,9 +93,7 @@
     (define tree (make-huffman-tree (build-path test-dir "huffman")))
     (define ctree (cleanse-huffman-tree tree))
     (define table (huffman-tree->hash-table tree))
-    (check-equal? (consult-huffman-tree 97 table) '(0))
-    (check-equal? (consult-huffman-tree 98 table) '(1 0 1))
-    (define (check byte) (check-eq? (cadr (call-with-values (lambda () (index-huffman-tree (consult-huffman-tree byte table) ctree)) list)) byte))
+    (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (consult-huffman-tree byte table)) (index-huffman-tree (cdr p) (car p) ctree)) list)) byte))
     (map check '(97 98 99 100))))
 
 (module+ main
