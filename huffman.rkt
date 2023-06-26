@@ -99,10 +99,10 @@
    "%"))
 
 (define (huffman-tree->hash-table (t : Node)) : Table
-  (define (handle (v : (U Instructions False)) (d : Natural) (s : (U One Zero))) : Natural
-    (if v (bitwise-ior v (arithmetic-shift s d)) s))
+  (define (handle (v : Instructions) (d : Natural) (s : (U One Zero))) : Natural
+    (bitwise-ior v (arithmetic-shift s d)))
   
-  (let loop ((t : Node t) (r : (U False Instructions) #f) (d : Natural 0) (h ((inst hasheq Byte (Pair Exact-Positive-Integer Instructions)))))
+  (let loop ((t : Node t) (r : Instructions 0) (d : Natural 0) (h ((inst hasheq Byte (Pair Exact-Positive-Integer Instructions)))))
     (define left (left-node t))
     (define right (right-node t))
     (cond ((and (node-is-leaf? left) (node-is-leaf? right))
