@@ -25,10 +25,8 @@
 (define (path->frequency-vector (path : Path-String)) : Frequency-Vector
   (define fv (init))
 
-  (if (file-exists? path)
-      (call-with-input-file/lock path (lambda (in) (|use port to update vector| in fv)))
-      (for ((p (in-directory path)))
-        (cond ((file-exists? p) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv)))))))
+  (for ((p (in-directory path)))
+    (cond ((file-exists? p) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv))))))
 
   fv)
 
