@@ -93,7 +93,7 @@
     (define tree (make-huffman-tree (build-path test-dir "huffman")))
     (define ctree (cleanse-huffman-tree tree))
     (define table (huffman-tree->hash-table tree))
-    (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (consult-huffman-tree byte table)) (index-huffman-tree (cdr p) (car p) ctree)) list)) byte))
+    (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (hash-ref table byte)) (index-huffman-tree (cdr p) (car p) ctree)) list)) byte))
     (map check '(97 98 99 100))))
 
 (module+ main
@@ -170,7 +170,7 @@
                                                (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
                                                      (else
                                                       (for ((bt (in-bytes b 0 n)))
-                                                        (async-channel-put och (consult-huffman-tree bt tb)))
+                                                        (async-channel-put och (hash-ref tb bt)))
                                                       (loop (+ s n)))))))
                              (path->string f))
                             r))))

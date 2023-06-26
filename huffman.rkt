@@ -114,9 +114,6 @@
           ((node-is-leaf? right) (loop left (handle r d 0) (add1 d) (hash-set h (leaf-content right) (cons (add1 d) (handle r d 1)))))
           (else (loop right (handle r d 1) (add1 d) (loop left (handle r d 0) (add1 d) h))))))
 
-(define (consult-huffman-tree (b : Byte) (t : Table))
-  (hash-ref t b))
-
 (: cleanse-huffman-tree (-> Node-or-Leaf (U Cleansed Byte)))
 (define (cleanse-huffman-tree tree)
   (cond ((node-is-leaf? tree) (leaf-content tree))
@@ -127,5 +124,5 @@
   (cond ((or (zero? len) (byte? tree)) (values int len tree))
         (else (index-huffman-tree (arithmetic-shift int -1) (sub1 len) (if (zero? (bitwise-bit-field int 0 1)) (car tree) (cadr tree))))))
 
-(provide consult-huffman-tree index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
+(provide index-huffman-tree make-huffman-tree cleanse-huffman-tree huffman-tree->hash-table
          analyze-compression-ratio)
