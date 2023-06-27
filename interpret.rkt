@@ -1,16 +1,30 @@
 #lang racket/base
-(require "codec.rkt" (submod "huffman.rkt" shallow) racket/file "lock.rkt" racket/class "buffer.rkt")
+(require (submod "huffman.rkt" shallow) racket/file "lock.rkt" racket/class "buffer.rkt" racket/generator)
 (provide bdnd-interpret)
 
 (define (bdnd-interpret port size filelist tree prefix)
   (file-stream-buffer-mode port 'block)
 
   (make-directory* prefix)
+
+  (define (make-buffer %) (new % (size (cond (size) (else 1000000)))))
   
-  (let-values (((ich thd) (decompress-from-port port (cond (size) (else 1000000))))
-               ((buffer) (new out-buffer% (size (cond (size) (else 1000000))))))
-    (define (check-and-get l) (if (zero? (car l)) (cons 8 (sync ich)) l))
-    (define (get) (cons 8 (sync ich)))
+  (let ((in-buffer (make-buffer in-buffer%))
+        (out-buffer (make-buffer out-buffer%)))
+    (send-generic in-buffer set-input port)
+
+    (define gen
+      (generator ()
+                 (let loop ()
+                   (send in-buffer read
+                         (lambda (n b)
+                           (cond ((eof-object? n))
+                                 (else (for ((bt (in-bytes b 0 n)))
+                                         (yield (cons 8 bt)))
+                                       (loop))))))))
+    
+    (define (get) (gen))
+    (define (check-and-get p) (if (zero? (car p)) (get) p))
     
     (define counter (box 0))
     (define (increase n) (set-box! counter (+ n (unbox counter))))
@@ -25,14 +39,13 @@
                                  name
                                  (lambda (out)
                                    (file-stream-buffer-mode out 'block)
-                                   (send-generic buffer set-output out)
+                                   (send-generic out-buffer set-output out)
                                    (let loop ((t tree) (l i) (s size))
-                                     (cond ((zero? s) (send-generic buffer flush) l)
+                                     (cond ((zero? s) (send-generic out-buffer flush) l)
                                            (else
                                             (define-values (bt ln tr) (index-huffman-tree (cdr l) (car l) t))
-                                            (cond ((byte? tr) (send-generic buffer commit tr) (loop tree (check-and-get (cons ln bt)) (sub1 s)))
+                                            (cond ((byte? tr) (send-generic out-buffer commit tr) (loop tree (check-and-get (cons ln bt)) (sub1 s)))
                                                   (else (loop tr (get) s)))))))))))
              (get)
              filelist))
-    (sync thd)
     (unbox counter)))

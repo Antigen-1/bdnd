@@ -72,20 +72,6 @@
                       (cond ((eof-object? n) (check-equal? bytes b))
                             (else (work (bytes-append b (subbytes bt 0 n)))))))))
 
-  (require racket/async-channel "codec.rkt")
-  
-  (test-case
-      "codec"
-    (define-values (in out) (make-pipe))
-    (define-values (ch1 thd) (compress-to-port out 10))
-    (define-values (ch2 _) (decompress-from-port in 10))
-    (define int #b11010111)
-    (async-channel-put ch1 (cons 9 int))
-    (async-channel-put ch1 #f)
-    (sync (handle-evt thd (lambda (_) (close-output-port out))))
-    (check-eq? (sync ch2) int)
-    (check-eq? (sync ch2) 0))
-
   (require "huffman.rkt" (submod "huffman.rkt" shallow))
   
   (test-case
@@ -102,7 +88,7 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "codec.rkt" "lock.rkt" "buffer.rkt" racket/class racket/async-channel racket/port racket/fasl racket/file)
+  (require racket/cmdline raco/command-name "huffman.rkt" "lock.rkt" "buffer.rkt" racket/class racket/port racket/fasl racket/file)
   
   (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
@@ -149,35 +135,43 @@
         temp
         (lambda (out)
           (file-stream-buffer-mode out 'block)
-          (define-values (och thd) (compress-to-port out (cond ((current-buffer-size)) (else 1000000))))
-          (define buffer (new in-buffer% (size (cond ((current-buffer-size)) (else 1000000)))))
-          (define filelist
+
+          (define (make-buffer %) (new % (size (cond ((current-buffer-size)) (else 1000000)))))
+          
+          (define in-buffer (make-buffer in-buffer%))
+          (define out-buffer (make-buffer out-buffer%))
+
+          (send-generic out-buffer set-output out)
+          
+          (define-values (_0 _1 filelist)
             (parameterize ((current-directory (current-handling-directory)))
-              (fold-files
-               (lambda (f sym r)
-                 (cond ((eq? sym 'file)
-                        (define start (current-milliseconds))
-                        (call-with-input-file/lock
-                         f
-                         (lambda (in)
-                           (file-stream-buffer-mode in 'block)
-                           (send-generic buffer set-input in)
-                           (cons
-                            (list
-                             (let loop ((s 0))
-                               (send-generic buffer read
-                                             (lambda (n b)
-                                               (cond ((eof-object? n) (prompt (format "~a @ ~a bytes @ ~a ms" f s (- (current-milliseconds) start))) s)
-                                                     (else
-                                                      (for ((bt (in-bytes b 0 n)))
-                                                        (async-channel-put och (hash-ref tb bt)))
-                                                      (loop (+ s n)))))))
-                             (path->string f))
-                            r))))
-                       (else r)))
-               null #f #t)))
-          (async-channel-put och #f)
-          (sync thd)
+              (for/fold ((r 0) (rl 0) (fl null)) ((f (in-directory)))
+                (define-values (res cpu real gc)
+                  (time-apply
+                   (lambda ()
+                     (call-with-input-file/lock
+                      f
+                      (lambda (in)
+                        (file-stream-buffer-mode in 'block)
+                        (send-generic in-buffer set-input in)
+                        (define-values (_s _r _rl)
+                          (let loop ((s 0) (r r) (rl rl))
+                            (send-generic in-buffer read
+                                          (lambda (n b)
+                                            (cond ((eof-object? n) (values s r rl))
+                                                  (else
+                                                   (define-values (__r __rl)
+                                                     (for/fold ((r r) (rl rl)) ((bt (in-bytes b 0 n)))
+                                                       (define pair (hash-ref tb bt))
+                                                       (let work ((r (bitwise-ior r (arithmetic-shift (cdr pair) rl))) (rl (+ (car pair) rl)))
+                                                         (if (>= rl 8)
+                                                             (begin (send-generic out-buffer commit (bitwise-bit-field r 0 8)) (work (arithmetic-shift r -8) (- rl 8)))
+                                                             (values r rl)))))
+                                                   (loop (+ s n) __r __rl)))))))
+                        (values _r _rl (cons (list _s (path->string f)) fl)))))
+                   null))
+                (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" f (car (caaddr res)) cpu real gc))
+                (apply values res))))
           (reverse filelist))))
     (call-with-input-file/lock
       temp
