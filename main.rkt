@@ -145,28 +145,30 @@
           (define-values (rest rest-length filelist)
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r 0) (rl 0) (fl null)) ((f (in-directory)))
-                (define-values (res cpu real gc)
-                  (time-apply
-                   (lambda ()
-                     (call-with-input-file/lock
-                      f
-                      (lambda (in)
-                        (file-stream-buffer-mode in 'block)
-                        (send-generic in-buffer set-input in)
-                        (let loop ((s 0) (r r) (rl rl))
-                          (define byte (send-generic in-buffer read))
-                          (cond ((eof-object? byte) (values r rl (cons (list s (path->string f)) fl)))
-                                (else
-                                 (define pair (hash-ref tb byte))
-                                 (let work ((r (bitwise-ior r (arithmetic-shift (cdr pair) rl))) (rl (+ (car pair) rl)))
-                                   (if (>= rl 8)
-                                       (begin (send-generic out-buffer commit (bitwise-bit-field r 0 8)) (work (arithmetic-shift r -8) (- rl 8)))
-                                       (loop (add1 s) r rl)))))))))
-                        
-                   null))
-                (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" f (car (caaddr res)) cpu real gc))
-                (apply values res))))
-
+                (cond ((file-exists? f)
+                       (define-values (res cpu real gc)
+                         (time-apply
+                          (lambda ()
+                            (call-with-input-file/lock
+                             f
+                             (lambda (in)
+                               (file-stream-buffer-mode in 'block)
+                               (send-generic in-buffer set-input in)
+                               (let loop ((s 0) (r r) (rl rl))
+                                 (define byte (send-generic in-buffer read))
+                                 (cond ((eof-object? byte) (values r rl (cons (list s (path->string f)) fl)))
+                                       (else
+                                        (define pair (hash-ref tb byte))
+                                        (let work ((r (bitwise-ior r (arithmetic-shift (cdr pair) rl))) (rl (+ (car pair) rl)))
+                                          (if (>= rl 8)
+                                              (begin (send-generic out-buffer commit (bitwise-bit-field r 0 8)) (work (arithmetic-shift r -8) (- rl 8)))
+                                              (loop (add1 s) r rl)))))))))
+                          
+                          null))
+                       (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" f (car (caaddr res)) cpu real gc))
+                       (apply values res))
+                      (else (values r rl fl))))))
+          
           (cond ((not (zero? rest-length)) (send-generic out-buffer commit rest)))
           (send-generic out-buffer flush)
           
