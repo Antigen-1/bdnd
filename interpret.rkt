@@ -1,5 +1,5 @@
 #lang racket/base
-(require (submod "huffman.rkt" shallow) racket/file "lock.rkt" racket/class "buffer.rkt" racket/generator)
+(require (submod "huffman.rkt" shallow) racket/file "lock.rkt" racket/class "buffer.rkt")
 (provide bdnd-interpret)
 
 (define (bdnd-interpret port size filelist tree prefix)
@@ -7,23 +7,15 @@
 
   (make-directory* prefix)
 
-  (define (make-buffer %) (new % (size (cond (size) (else 1000000)))))
+  (define buffer-size (cond (size) (else 1000000)))
+  
+  (define (make-buffer %) (new % (size buffer-size)))
   
   (let ((in-buffer (make-buffer in-buffer%))
         (out-buffer (make-buffer out-buffer%)))
     (send-generic in-buffer set-input port)
-
-    (define gen
-      (generator ()
-                 (let loop ()
-                   (send in-buffer read
-                         (lambda (n b)
-                           (cond ((eof-object? n))
-                                 (else (for ((bt (in-bytes b 0 n)))
-                                         (yield (cons 8 bt)))
-                                       (loop))))))))
     
-    (define (get) (gen))
+    (define (get) (cons 8 (send-generic in-buffer read)))
     (define (check-and-get p) (if (zero? (car p)) (get) p))
     
     (define counter (box 0))

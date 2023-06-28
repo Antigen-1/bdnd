@@ -61,16 +61,15 @@
     (define-values (in out) (make-pipe))
     (send-generic in-buffer set-input in)
     (send-generic out-buffer set-output out)
-    (define bytes (crypto-random-bytes 1000000))
-    (for ((b (in-bytes bytes)))
+    (define bts (crypto-random-bytes 1000000))
+    (for ((b (in-bytes bts)))
       (send-generic out-buffer commit b))
     (send-generic out-buffer flush)
     (close-output-port out)
     (let work ((b #""))
-      (send-generic in-buffer read
-                    (lambda (n bt)
-                      (cond ((eof-object? n) (check-equal? bytes b))
-                            (else (work (bytes-append b (subbytes bt 0 n)))))))))
+      (define bt (send-generic in-buffer read))
+      (cond ((eof-object? bt) (check-equal? bts b))
+            (else (work (bytes-append b (bytes bt)))))))
 
   (require "huffman.rkt" (submod "huffman.rkt" shallow))
   
@@ -143,7 +142,7 @@
 
           (send-generic out-buffer set-output out)
           
-          (define-values (_0 _1 filelist)
+          (define-values (rest rest-length filelist)
             (parameterize ((current-directory (current-handling-directory)))
               (for/fold ((r 0) (rl 0) (fl null)) ((f (in-directory)))
                 (define-values (res cpu real gc)
@@ -154,24 +153,23 @@
                       (lambda (in)
                         (file-stream-buffer-mode in 'block)
                         (send-generic in-buffer set-input in)
-                        (define-values (_s _r _rl)
-                          (let loop ((s 0) (r r) (rl rl))
-                            (send-generic in-buffer read
-                                          (lambda (n b)
-                                            (cond ((eof-object? n) (values s r rl))
-                                                  (else
-                                                   (define-values (__r __rl)
-                                                     (for/fold ((r r) (rl rl)) ((bt (in-bytes b 0 n)))
-                                                       (define pair (hash-ref tb bt))
-                                                       (let work ((r (bitwise-ior r (arithmetic-shift (cdr pair) rl))) (rl (+ (car pair) rl)))
-                                                         (if (>= rl 8)
-                                                             (begin (send-generic out-buffer commit (bitwise-bit-field r 0 8)) (work (arithmetic-shift r -8) (- rl 8)))
-                                                             (values r rl)))))
-                                                   (loop (+ s n) __r __rl)))))))
-                        (values _r _rl (cons (list _s (path->string f)) fl)))))
+                        (let loop ((s 0) (r r) (rl rl))
+                          (define byte (send-generic in-buffer read))
+                          (cond ((eof-object? byte) (values r rl (cons (list s (path->string f)) fl)))
+                                (else
+                                 (define pair (hash-ref tb byte))
+                                 (let work ((r (bitwise-ior r (arithmetic-shift (cdr pair) rl))) (rl (+ (car pair) rl)))
+                                   (if (>= rl 8)
+                                       (begin (send-generic out-buffer commit (bitwise-bit-field r 0 8)) (work (arithmetic-shift r -8) (- rl 8)))
+                                       (loop (add1 s) r rl)))))))))
+                        
                    null))
                 (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" f (car (caaddr res)) cpu real gc))
                 (apply values res))))
+
+          (cond ((not (zero? rest-length)) (send-generic out-buffer commit rest)))
+          (send-generic out-buffer flush)
+          
           (reverse filelist))))
     (call-with-input-file/lock
       temp

@@ -1,21 +1,28 @@
 #lang racket/base
-(require racket/class racket/port)
-(provide (all-defined-out))
+(require racket/class racket/generator racket/port)
+(provide in-buffer% out-buffer% read set-input commit flush set-output)
 
 (define in-buffer%
   (class object%
     (super-new)
 
     (init-field size)
-
-    (define buffer (make-bytes size))
     
     (define current-input (box (current-input-port)))
-
+    (define gen
+      (let ((buffer (make-bytes size)))
+        (generator
+         ()
+         (let loop ()
+           (sync (handle-evt (read-bytes!-evt buffer (unbox current-input))
+                             (lambda (n)
+                               (cond ((eof-object? n) (yield eof))
+                                     (else (for ((bt (in-bytes buffer 0 n)))
+                                             (yield bt))))
+                               (loop))))))))
+    
     (define (set-input port) (set-box! current-input port))
-
-    (define (read handler)
-      (sync (handle-evt (read-bytes!-evt buffer (unbox current-input)) (lambda (n) (handler n buffer)))))
+    (define (read) (gen))
 
     (public set-input read)))
 
