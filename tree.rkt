@@ -9,8 +9,8 @@
 (struct info (base depth) #:transparent)
 
 ;;path utilities
-(define (path-truncate-for path num)
-  (apply build-path (reverse (drop (reverse (explode-path path)) num))))
+(define (path-up-for path num)
+  (apply build-path (reverse (append (make-list num 'up) (reverse (explode-path path))))))
 (define (last-path-element path)
   (call-with-values (lambda () (split-path path))
                     (lambda lst (cadr lst))))
@@ -35,7 +35,7 @@
       (match* (node inf)
         (((file name _) (info base dep))
          (cond ((> dep depth)
-                (define new-base (path-truncate-for base (- dep depth)))
+                (define new-base (path-up-for base (- dep depth)))
                 (parameterize ((current-directory new-base))
                   (proc node))
                 (info new-base depth))
@@ -44,7 +44,7 @@
                      inf)))
         ((dir (info base dep))
          (cond ((> dep depth)
-                (define parent (path-truncate-for base (- dep depth)))
+                (define parent (path-up-for base (- dep depth)))
                 (parameterize ((current-directory parent))
                   (make-directory* dir))
                 (info (build-path parent dir) (add1 depth)))

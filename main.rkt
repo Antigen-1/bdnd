@@ -134,11 +134,12 @@
      (lambda (out)
        (file-stream-buffer-mode out 'block)
        (define handler (make-compress-handler tb out (current-buffer-size)))
-       (iter-path-tree
-        (lambda (node) (call-with-values (lambda () (time-apply handler (list node)))
-                                         (lambda (_ cpu real gc) (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" (file-name node) (file-size node) cpu real gc)))))
-        pt)
-       (handler #f)))
+       (parameterize ((current-directory (build-path (current-handling-directory) 'up)))
+         (iter-path-tree
+          (lambda (node) (call-with-values (lambda () (time-apply handler (list node)))
+                                           (lambda (_ cpu real gc) (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" (file-name node) (file-size node) cpu real gc)))))
+          pt)
+         (handler #f))))
     (call-with-input-file/lock
       temp
       (lambda (in)
