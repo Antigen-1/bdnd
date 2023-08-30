@@ -87,12 +87,12 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name "huffman.rkt" "lock.rkt" "buffer.rkt" racket/class racket/port racket/fasl racket/file)
+  (require racket/cmdline raco/command-name racket/port racket/fasl racket/file
+           "huffman.rkt" "lock.rkt" "tree.rkt" "codec.rkt")
   
-  (define current-prefix (make-parameter "file"))
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
-  (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r)))))
+  (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (or (and r (string->number r)) 1000000))))
   (define current-verbose-mode (make-parameter #f))
   (define current-log-handler (make-parameter displayln))
 
@@ -104,12 +104,12 @@
                 #:once-any (("-l" "--log") "report information at the `info` level with the topic `bdnd`"
                                            (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
                 #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
-                #:once-any (("-p" "--prefix") p "specify the prefix[default to \"file\"]" (current-prefix p))
                 #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
   
   (define ht (make-huffman-tree (current-handling-directory)))
   (define ct (cleanse-huffman-tree ht))
   (define tb (huffman-tree->hash-table ht))
+  (define pt (make-path-tree (current-handling-directory)))
   
   (define temp (make-temporary-file))
 
@@ -128,51 +128,17 @@
                           (delete-directory/files #:must-exist? #f (current-output-file))
                           (delete-file temp)
                           (raise e))))
-    (define fl
-      (call-with-output-file/lock
-        #:exists 'truncate
-        temp
-        (lambda (out)
-          (file-stream-buffer-mode out 'block)
-
-          (define (make-buffer %) (new % (size (cond ((current-buffer-size)) (else 1000000)))))
-          
-          (define in-buffer (make-buffer in-buffer%))
-          (define out-buffer (make-buffer out-buffer%))
-
-          (send-generic out-buffer set-output out)
-          
-          (define-values (rest rest-length filelist)
-            (parameterize ((current-directory (current-handling-directory)))
-              (for/fold ((r 0) (rl 0) (fl null)) ((f (in-directory)))
-                (cond ((file-exists? f)
-                       (define-values (res cpu real gc)
-                         (time-apply
-                          (lambda ()
-                            (call-with-input-file/lock
-                             f
-                             (lambda (in)
-                               (file-stream-buffer-mode in 'block)
-                               (send-generic in-buffer set-input in)
-                               (let loop ((s 0) (r r) (rl rl))
-                                 (define byte (send-generic in-buffer read))
-                                 (cond ((eof-object? byte) (values r rl (cons (list s (path->string f)) fl)))
-                                       (else
-                                        (define pair (hash-ref tb byte))
-                                        (let work ((r (bitwise-ior r (arithmetic-shift (cdr pair) rl))) (rl (+ (car pair) rl)))
-                                          (if (>= rl 8)
-                                              (begin (send-generic out-buffer commit (bitwise-bit-field r 0 8)) (work (arithmetic-shift r -8) (- rl 8)))
-                                              (loop (add1 s) r rl)))))))))
-                          
-                          null))
-                       (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" f (car (caaddr res)) cpu real gc))
-                       (apply values res))
-                      (else (values r rl fl))))))
-          
-          (cond ((not (zero? rest-length)) (send-generic out-buffer commit rest)))
-          (send-generic out-buffer flush)
-          
-          (reverse filelist))))
+    (call-with-output-file/lock
+     #:exists 'truncate
+     temp
+     (lambda (out)
+       (file-stream-buffer-mode out 'block)
+       (define handler (make-compress-handler tb out (current-buffer-size)))
+       (iter-path-tree
+        (lambda (node) (call-with-values (lambda () (time-apply handler (list node)))
+                                         (lambda (_ cpu real gc) (prompt (format "~a @ ~a bytes @ ~a ms[cpu] @ ~a ms[real] @ ~a ms[gc]" (file-name node) (file-size node) cpu real gc)))))
+        pt)
+       (handler #f)))
     (call-with-input-file/lock
       temp
       (lambda (in)
@@ -183,6 +149,6 @@
             (file-stream-buffer-mode fout 'block)
             (displayln "#lang racket/base" fout)
             (displayln "#reader (submod bdnd reader)" fout)
-            (s-exp->fasl (list fl ct (current-prefix)) fout)
+            (s-exp->fasl (list ct pt) fout)
             (copy-port in fout)))))
     (delete-file temp)))

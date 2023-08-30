@@ -1,7 +1,7 @@
 #lang info
 (define collection "bdnd")
 (define deps '("base"))
-(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib" "typed-racket-lib"))
+(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib" "typed-racket-lib" "git://github.com/Antigen-1/tree.git"))
 (define scribblings '(("scribblings/bdnd.scrbl" ())))
 (define pkg-desc "Description Here")
 (define version "0.0")
