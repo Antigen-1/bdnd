@@ -123,7 +123,7 @@
   (define tb (huffman-tree->hash-table ht))
   (define pt (make-path-tree (current-handling-directory)))
   
-  (define temp (make-temporary-file (current-working-directory)))
+  (define temp (make-temporary-file #:base-dir (current-working-directory)))
 
   (define log
     (and (current-verbose-mode)
