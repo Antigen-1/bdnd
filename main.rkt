@@ -101,26 +101,29 @@
   
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
+  (define current-working-directory (make-parameter (current-directory)))
   (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (or (and r (string->number r)) 1000000))))
   (define current-verbose-mode (make-parameter #f))
   (define current-log-handler (make-parameter displayln))
 
   (command-line #:program (short-program+command-name)
-                #:once-any (("-b" "--buffer") b "specify the size of the buffer"
-                                              (cond ((string->number b) => current-buffer-size)))
-                #:once-any (("-v" "--verbose") "increase verbosity"
-                                               (current-verbose-mode #t))
-                #:once-any (("-l" "--log") "report information at the `info` level with the topic `bdnd`"
-                                           (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
-                #:once-any (("-d" "--directory") d "specify a directory" (current-handling-directory d))
-                #:once-any (("-o" "--output") o "specify the output file[default to \"result.rkt\"]" (current-output-file o)))
+                #:once-each
+                (("-w" "--working") w "Specify the working directory" (current-working-directory w))
+                (("-b" "--buffer") b "Specify the size of the buffer"
+                                   (cond ((string->number b) => current-buffer-size)))
+                (("-v" "--verbose") "Increase verbosity"
+                                    (current-verbose-mode #t))
+                (("-l" "--log") "Report information at the `info` level with the topic `bdnd`"
+                                (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
+                (("-d" "--directory") d "Specify a directory" (current-handling-directory d))
+                (("-o" "--output") o "Specify the output file[default to \"result.rkt\"]" (current-output-file o)))
   
   (define ht (make-huffman-tree (current-handling-directory)))
   (define ct (cleanse-huffman-tree ht))
   (define tb (huffman-tree->hash-table ht))
   (define pt (make-path-tree (current-handling-directory)))
   
-  (define temp (make-temporary-file))
+  (define temp (make-temporary-file (current-working-directory)))
 
   (define log
     (and (current-verbose-mode)
