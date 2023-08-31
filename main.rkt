@@ -30,7 +30,7 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
-  (require racket/fasl "private/codec.rkt" "private/tree.rkt" tree racket/file)
+  (require racket/fasl "private/codec.rkt" "private/tree.rkt")
 
   (define (bdnd-interpret port size tree path-tree)
     (file-stream-buffer-mode port 'block)
@@ -39,8 +39,7 @@
     
     (define handler (make-decompress-handler tree port buffer-size))
     
-    (with-handlers ((exn:fail:filesystem? (lambda (exn) (delete-directory/files (label path-tree) #:must-exist? #f) (raise exn))))
-      (iter-path-tree handler path-tree)))
+    (iter-path-tree handler path-tree))
   
   (define (read-syntax _ port)
     (cond ((port-try-file-lock? port 'shared)
@@ -134,10 +133,7 @@
   (prompt (format "compression ratio:~a" (analyze-compression-ratio ht))
           (format "temporary file:~a" temp))
   
-  (with-handlers ((exn? (lambda (e)
-                          (delete-directory/files #:must-exist? #f (current-output-file))
-                          (delete-file temp)
-                          (raise e))))
+  (with-handlers ((exn? (lambda (e) (delete-file temp) (raise e))))
     (call-with-output-file/lock
      #:exists 'truncate
      temp
