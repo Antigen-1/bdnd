@@ -30,7 +30,17 @@
 (define-runtime-path test-dir "test")
 
 (module reader racket/base
-  (require racket/fasl "interpret.rkt")
+  (require racket/fasl "private/codec.rkt" "private/tree.rkt" tree racket/file)
+
+  (define (bdnd-interpret port size tree path-tree)
+    (file-stream-buffer-mode port 'block)
+    
+    (define buffer-size (cond (size) (else 1000000)))
+    
+    (define handler (make-decompress-handler tree port buffer-size))
+    
+    (with-handlers ((exn:fail:filesystem? (lambda (exn) (delete-directory/files (label path-tree) #:must-exist? #f) (raise exn))))
+      (iter-path-tree handler path-tree)))
   
   (define (read-syntax _ port)
     (cond ((port-try-file-lock? port 'shared)
@@ -52,7 +62,7 @@
   ;; or with `raco test`. The code here does not run when this file is
   ;; required by another module.
 
-  (require "buffer.rkt" racket/random racket/class)
+  (require "private/buffer.rkt" racket/random racket/class)
 
   (test-case
       "buffer"
@@ -71,7 +81,7 @@
       (cond ((eof-object? bt) (check-equal? bts b))
             (else (work (bytes-append b (bytes bt)))))))
 
-  (require "huffman.rkt" (submod "huffman.rkt" shallow))
+  (require "private/huffman.rkt" (submod "private/huffman.rkt" shallow))
   
   (test-case
       "huffman"
@@ -88,7 +98,7 @@
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
   (require racket/cmdline raco/command-name racket/port racket/fasl racket/file
-           "huffman.rkt" "lock.rkt" "tree.rkt" "codec.rkt")
+           "private/huffman.rkt" "private/lock.rkt" "private/tree.rkt" "private/codec.rkt")
   
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
