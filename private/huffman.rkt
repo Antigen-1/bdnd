@@ -1,4 +1,10 @@
 #lang typed/racket/base/deep
+(require/typed "tree.rkt"
+  (#:opaque File file?)
+  (#:opaque Path-Tree path-tree?)
+  (file-name (-> File Path-String))
+  (iter-path-tree (-> (-> File Any) Path-Tree Any)))
+(require/typed "lock.rkt" (call-with-input-file/lock (-> Path-String (-> Input-Port Any) Any)))
 ;;All aliases
 (define-type Frequency-Vector (Vectorof Natural))
 (define-type Path-String (U Path String))
@@ -20,13 +26,14 @@
   (for ((b (in-port read-byte port)))
     (vector-update vec b add1)))
 
-(require/typed "lock.rkt" (call-with-input-file/lock (-> Path-String (-> Input-Port Any) Any)))
-
-(define (path->frequency-vector (path : Path-String)) : Frequency-Vector
+(define (path->frequency-vector (parent : Path-String) (path-tree : Path-Tree)) : Frequency-Vector
   (define fv (init))
 
-  (for ((p (in-directory path)))
-    (cond ((file-exists? p) (call-with-input-file/lock p (lambda (in) (|use port to update vector| in fv))))))
+  (parameterize ((current-directory parent))
+    (iter-path-tree
+     (lambda (node)
+       (call-with-input-file/lock (file-name node) (lambda (in) (|use port to update vector| in fv))))
+     path-tree))
 
   fv)
 
@@ -76,8 +83,8 @@
         ((null? (cdr l)) (define v (car l)) (if ((make-predicate Node) v) v (raise (make-exn:fail:contract "There is only one single byte" (current-continuation-marks)))))
         (else (ordered-list->huffman-tree (insert-node (merge-two-nodes (car l) (cadr l)) (cddr l))))))
 
-(define (make-huffman-tree (path : Path-String))
-  (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector path))))
+(define (make-huffman-tree (parent : Path-String) (path-tree : Path-Tree))
+  (ordered-list->huffman-tree (sort-frequency-vector-to-list (path->frequency-vector parent path-tree))))
 
 (require racket/format)
 

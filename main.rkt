@@ -80,11 +80,12 @@
       (cond ((eof-object? bt) (check-equal? bts b))
             (else (work (bytes-append b (bytes bt)))))))
 
-  (require "private/huffman.rkt" (submod "private/huffman.rkt" shallow))
+  (require "private/tree.rkt" "private/huffman.rkt" (submod "private/huffman.rkt" shallow))
   
   (test-case
       "huffman"
-    (define tree (make-huffman-tree test-dir))
+    (define path-tree (make-path-tree test-dir))
+    (define tree (make-huffman-tree (path-up-for test-dir 1) path-tree))
     (define ctree (cleanse-huffman-tree tree))
     (define table (huffman-tree->hash-table tree))
     (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (hash-ref table byte)) (index-huffman-tree (cdr p) (car p) ctree)) list)) byte))
@@ -117,11 +118,11 @@
                                 (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
                 (("-d" "--directory") d "Specify a directory" (current-handling-directory d))
                 (("-o" "--output") o "Specify the output file[default to \"result.rkt\"]" (current-output-file o)))
-  
-  (define ht (make-huffman-tree (current-handling-directory)))
+
+  (define pt (make-path-tree (current-handling-directory)))
+  (define ht (make-huffman-tree (path-up-for (current-handling-directory) 1) pt))
   (define ct (cleanse-huffman-tree ht))
   (define tb (huffman-tree->hash-table ht))
-  (define pt (make-path-tree (current-handling-directory)))
   
   (define temp (make-temporary-file #:base-dir (current-working-directory)))
 

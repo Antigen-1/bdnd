@@ -1,6 +1,6 @@
 #lang racket/base
-(require tree racket/list racket/match racket/file)
-(provide (struct-out file) make-path-tree iter-path-tree path-up-for)
+(require tree racket/list racket/match racket/file racket/contract)
+(provide (struct-out file) make-path-tree iter-path-tree path-up-for path-tree?)
 
 ;;structures
 (struct file (name (size #:mutable #:auto)) #:prefab #:constructor-name make-file-node)
@@ -24,6 +24,10 @@
                                   (else #f)))
                 (directory-list))))
       (raise (exn:fail:filesystem (format "Directory ~a is not found." directory-path) (current-continuation-marks)))))
+;;path tree predicate
+(define (path-tree? o)
+  (define file/c (and/c file? (lambda (f) (path-string? (file-name f))) (lambda (f) (or (not (file-size f)) (exact-nonnegative-integer? (file-size f))))))
+  ((treeof (or/c path-string? file/c)) o))
 
 ;;path tree iterator
 (define (iter-path-tree proc tree)
