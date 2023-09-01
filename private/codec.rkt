@@ -1,6 +1,5 @@
 #lang racket/base
-(require "tree.rkt" "buffer.rkt" "lock.rkt"
-         (submod "huffman.rkt" shallow)
+(require "tree.rkt" "buffer.rkt" "lock.rkt" "huffman.rkt"
          racket/match racket/class
          (for-syntax racket/base racket/list))
 (provide make-compress-handler make-decompress-handler)
@@ -42,6 +41,7 @@
                          (loop (add1 s) r rl)))))))))
       (#f (send-generic out-buffer commit (remain)) (send-generic out-buffer flush)))))
 (define (make-decompress-handler tree input size)
+  (define indexer (make-indexer tree))
   (define-states (remain 0) (remain-length 0))
   (define in-buffer (new in-buffer% (size size)))
   (define out-buffer (new out-buffer% (size size)))
@@ -60,12 +60,12 @@
         name
         (lambda (out)
           (send-generic out-buffer set-output out)
-          (let loop ((t tree) (s size))
+          (let loop ((s size))
             (cond ((zero? s) (send-generic out-buffer flush))
                   (else
-                   (define-values (bt ln tr) (index-huffman-tree (remain) (remain-length) t))
-                   (cond ((byte? tr) (send-generic out-buffer commit tr)
-                                     (update bt ln)
-                                     (check-and-get)
-                                     (loop tree (sub1 s)))
-                         (else (get) (loop tr s))))))))))))
+                   (define-values (rm ln res) (make-indexer (remain) (remain-length)))
+                   (cond (res (send-generic out-buffer commit res)
+                              (update rm ln)
+                              (check-and-get)
+                              (loop (sub1 s)))
+                         (else (get) (loop s))))))))))))

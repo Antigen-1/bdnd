@@ -80,15 +80,16 @@
       (cond ((eof-object? bt) (check-equal? bts b))
             (else (work (bytes-append b (bytes bt)))))))
 
-  (require "private/tree.rkt" "private/huffman.rkt" (submod "private/huffman.rkt" shallow))
+  (require "private/tree.rkt" "private/huffman.rkt" "private/huffman.rkt")
   
   (test-case
       "huffman"
     (define path-tree (make-path-tree test-dir))
     (define tree (make-huffman-tree (path-up-for test-dir 1) path-tree))
     (define ctree (cleanse-huffman-tree tree))
+    (define indexer (make-indexer ctree))
     (define table (huffman-tree->hash-table tree))
-    (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (hash-ref table byte)) (index-huffman-tree (cdr p) (car p) ctree)) list)) byte))
+    (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (hash-ref table byte)) (indexer (cdr p) (car p))) list)) byte))
     (map check '(97 98 99 100))))
 
 (module+ main
