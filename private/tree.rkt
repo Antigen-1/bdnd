@@ -1,6 +1,6 @@
 #lang racket/base
 (require tree racket/list racket/match racket/file)
-(provide (struct-out file) make-path-tree iter-path-tree)
+(provide (struct-out file) make-path-tree iter-path-tree path-up-for)
 
 ;;structures
 (struct file (name (size #:mutable #:auto)) #:prefab #:constructor-name make-file-node)
@@ -8,7 +8,7 @@
 
 ;;path utilities
 (define (path-up-for path num)
-  (apply build-path (cons path (make-list num 'up))))
+  (apply build-path path (make-list num 'up)))
 (define (last-path-element path)
   (call-with-values (lambda () (split-path path))
                     (lambda lst (cadr lst))))
