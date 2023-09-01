@@ -63,7 +63,7 @@
           (let loop ((s size))
             (cond ((zero? s) (send-generic out-buffer flush))
                   (else
-                   (define-values (rm ln res) (make-indexer (remain) (remain-length)))
+                   (define-values (rm ln res) (indexer (remain) (remain-length)))
                    (cond (res (send-generic out-buffer commit res)
                               (update rm ln)
                               (check-and-get)
