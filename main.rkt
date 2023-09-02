@@ -26,18 +26,32 @@
 ;; Code here
 
 (require racket/runtime-path)
+(provide get-buffer-size get-verbose-mode)
 
 (define-runtime-path test-dir "test")
 
-(module reader racket/base
-  (require racket/fasl "private/codec.rkt" "private/tree.rkt")
+;;environment variables
+(define (get-buffer-size)
+  (let ((r (getenv "BDND_BUFFER_SIZE")))
+    (or (and r (string->number r)) 1000000)))
+(define (get-verbose-mode)
+  (getenv "BDND_VERBOSE_MODE"))
+
+(module* reader racket/base
+  (require racket/fasl tree "private/codec.rkt" "private/tree.rkt" (submod ".."))
 
   (define (bdnd-interpret port size tree path-tree)
     (file-stream-buffer-mode port 'block)
+
+    (cond ((get-verbose-mode)
+           (print-tree
+            (map-tree
+             (lambda (node) (if (file? node)
+                                (format "filename : ~a, size : ~a" (file-name node) (file-size node))
+                                (format "directory : ~a" node)))
+             path-tree))))
     
-    (define buffer-size (cond (size) (else 1000000)))
-    
-    (define handler (make-decompress-handler tree port buffer-size))
+    (define handler (make-decompress-handler tree port size))
     
     (iter-path-tree handler path-tree))
   
@@ -48,7 +62,7 @@
              (lambda ()
                (file-stream-buffer-mode port 'block)
                (read-line port)
-               (apply bdnd-interpret port (let ((r (getenv "BDND_BUFFER_SIZE"))) (and r (string->number r))) (fasl->s-exp port)))
+               (apply bdnd-interpret port (get-buffer-size) (fasl->s-exp port)))
              (lambda () (port-file-unlock port))))
           (else (raise (make-exn:fail:filesystem
                         "fail to acquire the file lock when reading the source file"
@@ -92,20 +106,21 @@
     (define (check byte) (check-eq? (caddr (call-with-values (lambda () (define p (hash-ref table byte)) (indexer (cdr p) (car p))) list)) byte))
     (map check '(97 98 99 100))))
 
-(module+ main
+(module* main racket/base
   ;; (Optional) main submodule. Put code here if you need it to be executed when
   ;; this file is run using DrRacket or the `racket` executable.  The code here
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
   (require racket/cmdline raco/command-name racket/port racket/fasl racket/file
-           "private/huffman.rkt" "private/lock.rkt" "private/tree.rkt" "private/codec.rkt")
+           "private/huffman.rkt" "private/lock.rkt" "private/tree.rkt" "private/codec.rkt"
+           (submod ".."))
   
   (define current-output-file (make-parameter "result.rkt"))
   (define current-handling-directory (make-parameter #f))
   (define current-working-directory (make-parameter (current-directory)))
-  (define current-buffer-size (make-parameter (let ((r (getenv "BDND_BUFFER_SIZE"))) (or (and r (string->number r)) 1000000))))
-  (define current-verbose-mode (make-parameter #f))
+  (define current-buffer-size (make-parameter (get-buffer-size)))
+  (define current-verbose-mode (make-parameter (get-verbose-mode)))
   (define current-log-handler (make-parameter displayln))
 
   (command-line #:program (short-program+command-name)
