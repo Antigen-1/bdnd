@@ -112,7 +112,7 @@
   ;; does not run when this file is required by another module. Documentation:
   ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
   
-  (require racket/cmdline raco/command-name racket/port racket/fasl racket/file
+  (require racket/cmdline raco/command-name racket/port racket/fasl racket/file racket/contract
            "private/huffman.rkt" "private/lock.rkt" "private/tree.rkt" "private/codec.rkt"
            (submod ".."))
   
@@ -132,7 +132,9 @@
                                     (current-verbose-mode #t))
                 (("-l" "--log") "Report information at the `info` level with the topic `bdnd`"
                                 (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
-                (("-d" "--directory") d "Specify a directory" (current-handling-directory d))
+                (("-d" "--directory") d "Specify a relative directory path"
+                                      (contract relative-path? d '--directory 'current-handling-directory) ;;`iter-path-tree` function fail to handle absolute paths.
+                                      (current-handling-directory d))
                 (("-o" "--output") o "Specify the output file[default to \"result.rkt\"]" (current-output-file o)))
 
   (define pt (make-path-tree (current-handling-directory)))
