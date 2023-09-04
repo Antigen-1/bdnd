@@ -47,7 +47,7 @@
            (print-tree
             (map-tree
              (lambda (node) (if (file? node)
-                                (format "filename : ~a, size : ~a" (file-name node) (file-size node))
+                                (format "filename : ~a, size : ~a bytes" (file-name node) (file-size node))
                                 (format "directory : ~a" node)))
              path-tree))))
     
@@ -133,7 +133,7 @@
                 (("-l" "--log") "Report information at the `info` level with the topic `bdnd`"
                                 (current-log-handler (lambda (s) (log-message (current-logger) 'info 'bdnd s))))
                 (("-d" "--directory") d "Specify a relative directory path"
-                                      (contract relative-path? d '--directory 'current-handling-directory) ;;`iter-path-tree` function fail to handle absolute paths.
+                                      (contract relative-path? d '--directory 'current-handling-directory) ;;`iter-path-tree` function fails to handle absolute paths.
                                       (current-handling-directory d))
                 (("-o" "--output") o "Specify the output file[default to \"result.rkt\"]" (current-output-file o)))
 
